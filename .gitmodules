@@ -1,0 +1,12 @@
+[submodule "lib/Adafruit_LED_Backpack"]
+	path = lib/Adafruit_LED_Backpack
+	url = https://github.com/adafruit/Adafruit_LED_Backpack.git
+[submodule "lib/RTClib"]
+	path = lib/RTClib
+	url = https://github.com/adafruit/RTClib.git
+[submodule "lib/Adafruit_VEML7700"]
+	path = lib/Adafruit_VEML7700
+	url = https://github.com/adafruit/Adafruit_VEML7700.git
+[submodule "lib/WiFiNINA"]
+	path = lib/WiFiNINA
+	url = https://github.com/arduino-libraries/WiFiNINA.git
