@@ -10,3 +10,6 @@
 [submodule "lib/WiFiNINA"]
 	path = lib/WiFiNINA
 	url = https://github.com/arduino-libraries/WiFiNINA.git
+[submodule "lib/NTPClient"]
+	path = lib/NTPClient
+	url = https://github.com/arduino-libraries/NTPClient.git
