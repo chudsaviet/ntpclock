@@ -5,6 +5,7 @@
 #include "wifi.h"
 #include "ntp.h"
 #include "timezone.h"
+#include "display.h"
 
 TimeZoneInfo tzInfo;
 
@@ -24,34 +25,15 @@ void setup()
 
   setSyncProvider(getLocalTime);
   setSyncInterval(300);
+
+  displayBegin();
 }
 
-void printDigits(int digits)
-{
-  // utility for digital clock display: prints preceding colon and leading 0
-  Serial.print(":");
-  if (digits < 10)
-    Serial.print('0');
-  Serial.print(digits);
-}
-
-void digitalClockDisplay()
-{
-  // digital clock display of the time
-  Serial.print(hour());
-  printDigits(minute());
-  printDigits(second());
-  Serial.print(" ");
-  Serial.print(day());
-  Serial.print(".");
-  Serial.print(month());
-  Serial.print(".");
-  Serial.print(year());
-  Serial.println();
-}
-
+bool blink = false;
 void loop()
 {
-  digitalClockDisplay();
-  delay(10000);
+  display(now(), blink);
+
+  blink = !blink;
+  delay(1000);
 }
