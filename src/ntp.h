@@ -7,4 +7,4 @@
 
 #include "secrets.h"
 
-unsigned long ntpGetEpochTime();
+time_t ntpGetEpochTime();

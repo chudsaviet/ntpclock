@@ -13,3 +13,9 @@
 [submodule "lib/NTPClient"]
 	path = lib/NTPClient
 	url = https://github.com/arduino-libraries/NTPClient.git
+[submodule "lib/Time"]
+	path = lib/Time
+	url = https://github.com/PaulStoffregen/Time.git
+[submodule "lib/TimeZoneInfo"]
+	path = lib/TimeZoneInfo
+	url = git@github.com:chudsaviet/TimeZoneInfo.git

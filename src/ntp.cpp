@@ -9,7 +9,7 @@
 #define NTP_SERVER_FINAL "pool.ntp.org"
 #endif
 
-unsigned long ntpGetEpochTime()
+time_t ntpGetEpochTime()
 {
     Serial.println("Attempting to get time using NTP.");
     wifiNoLowPower();
@@ -42,5 +42,6 @@ unsigned long ntpGetEpochTime()
     timeClient.end();
     wifiLowPower();
 
-    return timeClient.getEpochTime();
+    // TODO(before 2038): make timeClient use 64-bit time.
+    return (time_t)timeClient.getEpochTime();
 }
