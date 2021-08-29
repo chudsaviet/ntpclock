@@ -25,3 +25,6 @@
 [submodule "lib/Adafruit-GFX-Library"]
 	path = lib/Adafruit-GFX-Library
 	url = https://github.com/adafruit/Adafruit-GFX-Library.git
+[submodule "lib/SAMD_TimerInterrupt"]
+	path = lib/SAMD_TimerInterrupt
+	url = https://github.com/khoih-prog/SAMD_TimerInterrupt.git
