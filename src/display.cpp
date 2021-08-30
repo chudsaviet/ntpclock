@@ -9,13 +9,10 @@ void displayBegin()
     clockDisplay.begin(DISPLAY_ADDRESS);
 }
 
-void display(time_t time, bool colon)
+void display(time_t time)
 {
-    clockDisplay.setBrightness(16);
+    clockDisplay.setBrightness(10);
     clockDisplay.print(hour(time) * 100 + minute(time), DEC);
+    clockDisplay.drawColon(second(time) % 2 == 0);
     clockDisplay.writeDisplay();
-
-    clockDisplay.setBrightness(16);
-    clockDisplay.drawColon(colon);
-    clockDisplay.writeColon();
 }

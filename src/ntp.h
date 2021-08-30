@@ -1,5 +1,6 @@
 #pragma once
 
+#include <time.h>
 #include <Arduino.h>
 #include <NTPClient.h>
 
@@ -7,4 +8,6 @@
 
 #include "secrets.h"
 
-time_t ntpGetEpochTime();
+#define NTP_ERA 0
+
+timespec ntpGetTime();

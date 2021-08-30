@@ -12,7 +12,8 @@
 	url = https://github.com/arduino-libraries/WiFiNINA.git
 [submodule "lib/NTPClient"]
 	path = lib/NTPClient
-	url = https://github.com/arduino-libraries/NTPClient.git
+	url = https://github.com/chudsaviet/NTPClient.git
+	branch = hires-timestamp_reintegrate-pr-102
 [submodule "lib/Time"]
 	path = lib/Time
 	url = https://github.com/PaulStoffregen/Time.git

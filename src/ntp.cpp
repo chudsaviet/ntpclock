@@ -9,7 +9,7 @@
 #define NTP_SERVER_FINAL "pool.ntp.org"
 #endif
 
-time_t ntpGetEpochTime()
+timespec ntpGetTime()
 {
     Serial.println("Attempting to get time using NTP.");
     wifiNoLowPower();
@@ -30,7 +30,7 @@ time_t ntpGetEpochTime()
             Serial.println("NTP cannot query server.");
             timeClient.end();
             wifiLowPower();
-            return 0;
+            return {0, 0};
         }
 
         Serial.print("Attempt ");
@@ -42,6 +42,8 @@ time_t ntpGetEpochTime()
     timeClient.end();
     wifiLowPower();
 
-    // TODO(before 2038): make timeClient use 64-bit time.
-    return (time_t)timeClient.getEpochTime();
+    time_t tv_sec = static_cast<time_t>(timeClient.getEpochTime()) + (NTP_ERA * 4294967296LL);
+    long tv_nsec = static_cast<long>(static_cast<double>(timeClient.get_millis()) * 1000000.0);
+
+    return {tv_sec, tv_nsec};
 }
