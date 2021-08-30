@@ -8,14 +8,20 @@
 #include "ntp.h"
 #include "timezone.h"
 #include "display.h"
+#include "rtc.h"
 
 #define HW_TICK_TIMER_INTERVAL_MS 100L
+#define NTP_SYNC_INTERVAL_MS 3600000L
+#define RTC_SYNC_INTERVAL_MS 10000L
 
 volatile timespec currentTime = {0, 0};
 
 SAMDTimer TickTimer(TIMER_TCC);
 
 TimeZoneInfo tzInfo;
+
+uint32_t lastNTPSync = 0;
+uint32_t lastRTCSync = 0;
 
 bool currentTimeInc(unsigned long inc_ms)
 {
@@ -37,17 +43,43 @@ void tick()
   if (currentTimeInc(HW_TICK_TIMER_INTERVAL_MS))
   {
     display(currentTime.tv_sec);
-    Serial.println(currentTime.tv_sec);
   }
+}
+
+void rtcSync()
+{
+  timespec rtcTime = getRTC();
+  rtcTime.tv_sec = tzInfo.utc2local(rtcTime.tv_sec);
+
+  currentTime.tv_sec = rtcTime.tv_sec;
+  currentTime.tv_nsec = rtcTime.tv_nsec;
+}
+
+void ntpSync()
+{
+  timespec ntpTime = ntpGetTime();
+
+  currentTime.tv_nsec = ntpTime.tv_nsec;
+  currentTime.tv_sec = tzInfo.utc2local(ntpTime.tv_sec);
+
+  setRTC(ntpTime);
 }
 
 void setup()
 {
   Serial.begin(9600);
-  while (!Serial)
+
+  tzInfo.setLocation_P(tzData);
+
+  if (!beginRTC())
   {
-    ; // wait for serial port to connect. Needed for native USB port only
+    Serial.println("Couldn't find RTC");
+    Serial.flush();
+    abort();
   }
+
+  rtcSync();
+  lastRTCSync = millis();
 
   displayBegin();
 
@@ -56,15 +88,21 @@ void setup()
   wifiBegin();
   wifiLowPower();
 
-  tzInfo.setLocation_P(tzData);
+  ntpSync();
+  lastNTPSync = millis();
 }
 
 void loop()
 {
-  timespec ntpTime = ntpGetTime();
-  ntpTime.tv_sec = tzInfo.utc2local(ntpTime.tv_sec);
-
-  currentTime.tv_sec = ntpTime.tv_sec;
-  currentTime.tv_nsec = ntpTime.tv_nsec;
-  delay(300000);
+  if (millis() - lastNTPSync > NTP_SYNC_INTERVAL_MS)
+  {
+    ntpSync();
+    lastNTPSync = millis();
+  }
+  //if (millis() - lastRTCSync > RTC_SYNC_INTERVAL_MS)
+  //{
+  //  rtcSync();
+  //  lastRTCSync = millis();
+  //}
+  delay(4000);
 }
