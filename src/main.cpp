@@ -11,17 +11,18 @@
 #include "rtc.h"
 
 #define HW_TICK_TIMER_INTERVAL_MS 100L
-#define NTP_SYNC_INTERVAL_MS 3600000L
-#define RTC_SYNC_INTERVAL_MS 10000L
+#define CLOCK_SYNC_INTERVAL_MS 1048576L
 
+// RTC and NTP carry UTC time, currentTime carries local time.
 volatile timespec currentTime = {0, 0};
 
 SAMDTimer TickTimer(TIMER_TCC);
 
 TimeZoneInfo tzInfo;
 
-uint32_t lastNTPSync = 0;
-uint32_t lastRTCSync = 0;
+// We don't care about millis() overflow,
+// the worst this that will happen is just one additional sync.
+uint32_t lastSync = 0;
 
 bool currentTimeInc(unsigned long inc_ms)
 {
@@ -52,17 +53,39 @@ void rtcSync()
   rtcTime.tv_sec = tzInfo.utc2local(rtcTime.tv_sec);
 
   currentTime.tv_sec = rtcTime.tv_sec;
-  currentTime.tv_nsec = rtcTime.tv_nsec;
+  // Not touching currentTime.tv_nsec because RTC does not offer subsecond precision.
 }
 
-void ntpSync()
+bool ntpSync()
 {
   timespec ntpTime = ntpGetTime();
 
-  currentTime.tv_nsec = ntpTime.tv_nsec;
-  currentTime.tv_sec = tzInfo.utc2local(ntpTime.tv_sec);
+  if (ntpTime.tv_sec != 0 || ntpTime.tv_nsec != 0)
+  {
+    currentTime.tv_nsec = ntpTime.tv_nsec;
+    currentTime.tv_sec = tzInfo.utc2local(ntpTime.tv_sec);
+    setRTC(ntpTime);
+    return true;
+  }
+  else
+  {
+    return false;
+  }
+}
 
-  setRTC(ntpTime);
+void sync()
+{
+  Serial.println("Attempting NTP sync...");
+  if (ntpSync())
+  {
+    Serial.println("NTP sync successful.");
+  }
+  else
+  {
+    Serial.println("NTP sync failed.");
+    Serial.println("Performing RTC sync.");
+    rtcSync();
+  }
 }
 
 void setup()
@@ -78,8 +101,10 @@ void setup()
     abort();
   }
 
+  // Do RTC sync before display and WiFi start to display time earlier.
+  Serial.println("Performing early RTC sync.");
   rtcSync();
-  lastRTCSync = millis();
+  lastSync = millis();
 
   displayBegin();
 
@@ -88,21 +113,17 @@ void setup()
   wifiBegin();
   wifiLowPower();
 
-  ntpSync();
-  lastNTPSync = millis();
+  // Performing first full sync.
+  sync();
+  lastSync = millis();
 }
 
 void loop()
 {
-  if (millis() - lastNTPSync > NTP_SYNC_INTERVAL_MS)
+  if (millis() - lastSync > CLOCK_SYNC_INTERVAL_MS)
   {
-    ntpSync();
-    lastNTPSync = millis();
+    sync();
+    lastSync = millis();
   }
-  //if (millis() - lastRTCSync > RTC_SYNC_INTERVAL_MS)
-  //{
-  //  rtcSync();
-  //  lastRTCSync = millis();
-  //}
   delay(4000);
 }
