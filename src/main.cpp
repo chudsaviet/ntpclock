@@ -13,8 +13,17 @@
 #define HW_TICK_TIMER_INTERVAL_MS 100L
 #define CLOCK_SYNC_INTERVAL_MS 1048576L
 
+enum SyncSource
+{
+  none,
+  rtc,
+  ntp
+};
+
 // RTC and NTP carry UTC time, currentTime carries local time.
 volatile timespec currentTime = {0, 0};
+
+volatile SyncSource lastSyncSource = SyncSource::none;
 
 SAMDTimer TickTimer(TIMER_TCC);
 
@@ -43,7 +52,7 @@ void tick()
 {
   if (currentTimeInc(HW_TICK_TIMER_INTERVAL_MS))
   {
-    display(currentTime.tv_sec);
+    display(currentTime.tv_sec, lastSyncSource == SyncSource::ntp);
   }
 }
 
@@ -54,6 +63,8 @@ void rtcSync()
 
   currentTime.tv_sec = rtcTime.tv_sec;
   // Not touching currentTime.tv_nsec because RTC does not offer subsecond precision.
+
+  lastSyncSource = SyncSource::rtc;
 }
 
 bool ntpSync()
@@ -64,6 +75,7 @@ bool ntpSync()
   {
     currentTime.tv_nsec = ntpTime.tv_nsec;
     currentTime.tv_sec = tzInfo.utc2local(ntpTime.tv_sec);
+    lastSyncSource = SyncSource::ntp;
     setRTC(ntpTime);
     return true;
   }
