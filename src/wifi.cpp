@@ -1,6 +1,6 @@
 #include "wifi.h"
 
-#define CONNECT_DELAY_MS 1000
+#define CONNECT_DELAY_MS 1024
 #define CONNECT_ATTEMPTS 16
 
 int status = WL_IDLE_STATUS;
@@ -54,23 +54,9 @@ void printWifiData()
     printMacAddress(mac);
 }
 
-bool wifiBegin()
+bool wifiConnect()
 {
     Serial.println("Connecting WiFi.");
-
-    if (WiFi.status() == WL_NO_MODULE)
-    {
-        Serial.println("Communication with WiFi module failed!");
-        return false;
-    }
-
-    String fv = WiFi.firmwareVersion();
-
-    if (fv < WIFI_FIRMWARE_LATEST_VERSION)
-    {
-        Serial.println("Please upgrade the firmware!");
-    }
-
     int connect_attempts = 0;
     while (status != WL_CONNECTED)
     {
@@ -89,11 +75,36 @@ bool wifiBegin()
     }
 
     Serial.println("WiFi connected.");
-
-    printCurrentNet();
-    printWifiData();
-
     return true;
+}
+
+bool wifiBegin()
+{
+    Serial.println("Starting WiFi module.");
+
+    if (WiFi.status() == WL_NO_MODULE)
+    {
+        Serial.println("Communication with WiFi module failed!");
+        return false;
+    }
+
+    String fv = WiFi.firmwareVersion();
+
+    if (fv < WIFI_FIRMWARE_LATEST_VERSION)
+    {
+        Serial.println("Please upgrade the firmware!");
+    }
+
+    if (wifiConnect())
+    {
+        printCurrentNet();
+        printWifiData();
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 void wifiEnd()
@@ -112,4 +123,17 @@ void wifiNoLowPower()
 {
     Serial.println("Putting WiFi to full operational mode.");
     WiFi.noLowPowerMode();
+}
+
+void wifiDisconnect()
+{
+    Serial.println("Disconnecting WiFi.");
+    WiFi.disconnect();
+}
+
+bool wifiReconnect()
+{
+    Serial.println("Trying to reconnect WiFi.");
+    wifiDisconnect();
+    return wifiConnect();
 }

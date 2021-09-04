@@ -13,3 +13,6 @@ void wifiNoLowPower();
 
 // You won't be able to begin again if you call end.
 void wifiEnd();
+bool wifiConnect();
+void wifiDisconnect();
+bool wifiReconnect();

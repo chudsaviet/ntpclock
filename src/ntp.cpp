@@ -36,6 +36,7 @@ timespec ntpGetTime()
         Serial.print("Attempt ");
         Serial.print(attempt);
         Serial.println(" failed.");
+        wifiReconnect();
         delay(ATTEMPT_DELAY_MS);
     }
 
