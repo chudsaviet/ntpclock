@@ -9,9 +9,9 @@ void displayBegin()
     clockDisplay.begin(DISPLAY_ADDRESS);
 }
 
-void display(time_t time, bool showColons)
+void display(time_t time, bool showColons, uint8_t brightness)
 {
-    clockDisplay.setBrightness(10);
+    clockDisplay.setBrightness(brightness);
     clockDisplay.print(hour(time) * 100 + minute(time), DEC);
     if (showColons)
     {

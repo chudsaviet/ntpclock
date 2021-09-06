@@ -9,9 +9,15 @@
 #include "timezone.h"
 #include "display.h"
 #include "rtc.h"
+#include "als.h"
 
-#define HW_TICK_TIMER_INTERVAL_MS 100L
+#define HW_TICK_TIMER_INTERVAL_MS 10L
 #define CLOCK_SYNC_INTERVAL_MS 1048576L
+#define BRIGHTNESS_ADJUST_INTERVAL_MS 1024L
+#define DEFAULT_BRIGHTNESS 8L
+#define MAX_BRIGHTNESS 16L
+#define MIN_BRIGNTNESS 0L
+#define MAX_LUX 400.0F
 
 enum SyncSource
 {
@@ -22,6 +28,7 @@ enum SyncSource
 
 // RTC and NTP carry UTC time, currentTime carries local time.
 volatile timespec currentTime = {0, 0};
+volatile uint8_t currentBrightness = DEFAULT_BRIGHTNESS;
 
 volatile SyncSource lastSyncSource = SyncSource::none;
 
@@ -30,8 +37,9 @@ SAMDTimer TickTimer(TIMER_TCC);
 TimeZoneInfo tzInfo;
 
 // We don't care about millis() overflow,
-// the worst this that will happen is just one additional sync.
+// the worst this that will happen is just one additional sync/adjustment.
 uint32_t lastSync = 0;
+uint32_t lastBrightnessAdjustment = 0;
 
 bool currentTimeInc(unsigned long inc_ms)
 {
@@ -52,7 +60,7 @@ void tick()
 {
   if (currentTimeInc(HW_TICK_TIMER_INTERVAL_MS))
   {
-    display(currentTime.tv_sec, lastSyncSource == SyncSource::ntp);
+    display(currentTime.tv_sec, lastSyncSource == SyncSource::ntp, currentBrightness);
   }
 }
 
@@ -100,6 +108,21 @@ void sync()
   }
 }
 
+void adjustBrightness()
+{
+  float lux = alsGetLux();
+  Serial.print("Got ");
+  Serial.print(lux);
+  Serial.println(" lux.");
+
+  float k = lux / MAX_LUX;
+  currentBrightness = MIN_BRIGNTNESS +
+                      static_cast<uint8_t>(
+                          static_cast<float>(MAX_BRIGHTNESS - MIN_BRIGNTNESS) * k);
+  Serial.print("Setting brightness to ");
+  Serial.println(currentBrightness);
+}
+
 void setup()
 {
   Serial.begin(9600);
@@ -117,6 +140,10 @@ void setup()
   Serial.println("Performing early RTC sync.");
   rtcSync();
   lastSync = millis();
+
+  alsBegin();
+  adjustBrightness();
+  lastBrightnessAdjustment = millis();
 
   displayBegin();
 
@@ -137,5 +164,12 @@ void loop()
     sync();
     lastSync = millis();
   }
-  delay(4000);
+
+  if (millis() - lastBrightnessAdjustment > BRIGHTNESS_ADJUST_INTERVAL_MS)
+  {
+    adjustBrightness();
+    lastBrightnessAdjustment = millis();
+  }
+
+  delay(256);
 }

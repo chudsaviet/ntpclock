@@ -9,4 +9,4 @@
 #include <Adafruit_LEDBackpack.h>
 
 void displayBegin();
-void display(time_t time, bool showColons);
+void display(time_t time, bool showColons, uint8_t brightness);
