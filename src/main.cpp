@@ -36,8 +36,7 @@ SAMDTimer TickTimer(TIMER_TCC);
 
 TimeZoneInfo tzInfo;
 
-// We don't care about millis() overflow,
-// the worst this that will happen is just one additional sync/adjustment.
+uint32_t previousMillis = 0;
 uint32_t lastSync = 0;
 uint32_t lastBrightnessAdjustment = 0;
 
@@ -159,17 +158,25 @@ void setup()
 
 void loop()
 {
-  if (millis() - lastSync > CLOCK_SYNC_INTERVAL_MS)
+  uint32_t currentMillis = millis();
+  if (currentMillis < previousMillis)
   {
-    sync();
-    lastSync = millis();
+    lastSync = 0;
+    lastBrightnessAdjustment = 0;
   }
 
-  if (millis() - lastBrightnessAdjustment > BRIGHTNESS_ADJUST_INTERVAL_MS)
+  if (currentMillis - lastBrightnessAdjustment > BRIGHTNESS_ADJUST_INTERVAL_MS)
   {
     adjustBrightness();
-    lastBrightnessAdjustment = millis();
+    lastBrightnessAdjustment = currentMillis;
   }
 
+  if (currentMillis - lastSync > CLOCK_SYNC_INTERVAL_MS)
+  {
+    sync();
+    lastSync = currentMillis;
+  }
+
+  previousMillis = currentMillis;
   delay(256);
 }
