@@ -12,12 +12,13 @@
 #include "als.h"
 
 #define HW_TICK_TIMER_INTERVAL_MS 10L
+#define DISPLAY_UPDATE_INTERVAL_MS 32L
 #define CLOCK_SYNC_INTERVAL_MS 1048576L
 #define BRIGHTNESS_ADJUST_INTERVAL_MS 1024L
 #define DEFAULT_BRIGHTNESS 8L
 #define MAX_BRIGHTNESS 16L
 #define MIN_BRIGNTNESS 0L
-#define MAX_LUX 400.0F
+#define MAX_LUX 500.0F
 
 enum SyncSource
 {
@@ -39,6 +40,7 @@ TimeZoneInfo tzInfo;
 uint32_t previousMillis = 0;
 uint32_t lastSync = 0;
 uint32_t lastBrightnessAdjustment = 0;
+uint32_t lastDisplayUpdate = 0;
 
 bool currentTimeInc(unsigned long inc_ms)
 {
@@ -57,10 +59,12 @@ bool currentTimeInc(unsigned long inc_ms)
 
 void tick()
 {
-  if (currentTimeInc(HW_TICK_TIMER_INTERVAL_MS))
-  {
-    display(currentTime.tv_sec, lastSyncSource == SyncSource::ntp, currentBrightness);
-  }
+  currentTimeInc(HW_TICK_TIMER_INTERVAL_MS);
+}
+
+void displayUpdate()
+{
+  display(currentTime.tv_sec, lastSyncSource == SyncSource::ntp, currentBrightness);
 }
 
 void rtcSync()
@@ -115,9 +119,10 @@ void adjustBrightness()
   Serial.println(" lux.");
 
   float k = lux / MAX_LUX;
-  currentBrightness = MIN_BRIGNTNESS +
-                      static_cast<uint8_t>(
-                          static_cast<float>(MAX_BRIGHTNESS - MIN_BRIGNTNESS) * k);
+  currentBrightness = min(MAX_BRIGHTNESS,
+                          MIN_BRIGNTNESS +
+                              static_cast<uint8_t>(
+                                  static_cast<float>(MAX_BRIGHTNESS - MIN_BRIGNTNESS) * k));
   Serial.print("Setting brightness to ");
   Serial.println(currentBrightness);
 }
@@ -163,6 +168,13 @@ void loop()
   {
     lastSync = 0;
     lastBrightnessAdjustment = 0;
+    lastDisplayUpdate = 0;
+  }
+
+  if (currentMillis - lastDisplayUpdate > DISPLAY_UPDATE_INTERVAL_MS)
+  {
+    displayUpdate();
+    lastDisplayUpdate = currentMillis;
   }
 
   if (currentMillis - lastBrightnessAdjustment > BRIGHTNESS_ADJUST_INTERVAL_MS)
@@ -178,5 +190,5 @@ void loop()
   }
 
   previousMillis = currentMillis;
-  delay(256);
+  delay(8);
 }
