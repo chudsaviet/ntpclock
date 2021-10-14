@@ -1,7 +1,7 @@
 #include "ntp.h"
 
 #define ATTEMPT_DELAY_MS 3803
-#define ATTEMPTS 8
+#define ATTEMPTS 3
 
 #ifdef NTP_SERVER
 #define NTP_SERVER_FINAL NTP_SERVER
@@ -14,14 +14,26 @@ timespec ntpGetTime()
     Serial.println("Attempting to get time using NTP.");
     wifiNoLowPower();
 
+    IPAddress ntpServerIPAddress;
+    int err = WiFi.hostByName(NTP_SERVER_FINAL, ntpServerIPAddress);
+    if (err == 1)
+    {
+        Serial.print("NTP server: ");
+        Serial.println(ntpServerIPAddress);
+    }
+    else
+    {
+        Serial.print("Error resolving NTP server name, code: ");
+        Serial.println(err);
+    }
+
     WiFiUDP wifiUdp;
-    NTPClient timeClient(wifiUdp, NTP_SERVER_FINAL);
+    NTPClient timeClient(wifiUdp, ntpServerIPAddress);
 
     timeClient.begin();
 
     int attempt = 0;
-    Serial.print("Attempting to query NTP server ");
-    Serial.println(NTP_SERVER_FINAL);
+    Serial.print("Attempting to query NTP server.");
     while (!timeClient.forceUpdate())
     {
         attempt++;
@@ -37,7 +49,7 @@ timespec ntpGetTime()
         Serial.print(attempt);
         Serial.println(" failed.");
         wifiReconnect();
-        delay(ATTEMPT_DELAY_MS);
+        delay(ATTEMPT_DELAY_MS * attempt);
     }
 
     timeClient.end();

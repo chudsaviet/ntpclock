@@ -114,17 +114,12 @@ void sync()
 void adjustBrightness()
 {
   float lux = alsGetLux();
-  Serial.print("Got ");
-  Serial.print(lux);
-  Serial.println(" lux.");
 
   float k = lux / MAX_LUX;
   currentBrightness = min(MAX_BRIGHTNESS,
                           MIN_BRIGNTNESS +
                               static_cast<uint8_t>(
                                   static_cast<float>(MAX_BRIGHTNESS - MIN_BRIGNTNESS) * k));
-  Serial.print("Setting brightness to ");
-  Serial.println(currentBrightness);
 }
 
 void setup()
@@ -150,6 +145,8 @@ void setup()
   lastBrightnessAdjustment = millis();
 
   displayBegin();
+  displayUpdate();
+  lastDisplayUpdate = millis();
 
   TickTimer.attachInterruptInterval(HW_TICK_TIMER_INTERVAL_MS * 1000, tick);
 

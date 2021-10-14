@@ -123,6 +123,13 @@ void wifiNoLowPower()
 {
     Serial.println("Putting WiFi to full operational mode.");
     WiFi.noLowPowerMode();
+    int status = WL_IDLE_STATUS;
+    while (status != WL_CONNECTED)
+    {
+        status = WiFi.status();
+        // We can't do a big delay here because clock shall tick.
+        delay(1);
+    }
 }
 
 void wifiDisconnect()
