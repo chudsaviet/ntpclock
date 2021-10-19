@@ -1,6 +1,6 @@
-#include "wifi.h"
+#include "wifi_local.h"
 
-#define CONNECT_DELAY_MS 1024
+#define CONNECT_DELAY_MS 4096
 #define CONNECT_ATTEMPTS 16
 
 int status = WL_IDLE_STATUS;
@@ -23,35 +23,9 @@ void printMacAddress(byte mac[])
     Serial.println();
 }
 
-void printCurrentNet()
-{
-    Serial.print("SSID: ");
-    Serial.println(WiFi.SSID());
-    byte bssid[6];
-
-    WiFi.BSSID(bssid);
-    Serial.print("BSSID: ");
-    printMacAddress(bssid);
-
-    long rssi = WiFi.RSSI();
-    Serial.print("signal strength (RSSI):");
-    Serial.println(rssi);
-
-    byte encryption = WiFi.encryptionType();
-    Serial.print("Encryption Type:");
-    Serial.println(encryption, HEX);
-}
-
 void printWifiData()
 {
-    IPAddress ip = WiFi.localIP();
-    Serial.print("IP Address: ");
-    Serial.println(ip);
-
-    byte mac[6];
-    WiFi.macAddress(mac);
-    Serial.print("MAC address: ");
-    printMacAddress(mac);
+    WiFi.printDiag(Serial);
 }
 
 bool wifiConnect()
@@ -82,22 +56,8 @@ bool wifiBegin()
 {
     Serial.println("Starting WiFi module.");
 
-    if (WiFi.status() == WL_NO_MODULE)
-    {
-        Serial.println("Communication with WiFi module failed!");
-        return false;
-    }
-
-    String fv = WiFi.firmwareVersion();
-
-    if (fv < WIFI_FIRMWARE_LATEST_VERSION)
-    {
-        Serial.println("Please upgrade the firmware!");
-    }
-
     if (wifiConnect())
     {
-        printCurrentNet();
         printWifiData();
         return true;
     }
@@ -110,19 +70,19 @@ bool wifiBegin()
 void wifiEnd()
 {
     Serial.println("Disconnecting WiFi.");
-    WiFi.end();
+    WiFi.disconnect();
 }
 
 void wifiLowPower()
 {
     Serial.println("Putting WiFi to low power mode.");
-    WiFi.lowPowerMode();
+    WiFi.setSleep(WIFI_PS_MIN_MODEM);
 }
 
 void wifiNoLowPower()
 {
     Serial.println("Putting WiFi to full operational mode.");
-    WiFi.noLowPowerMode();
+    WiFi.setSleep(WIFI_PS_NONE);
     int status = WL_IDLE_STATUS;
     while (status != WL_CONNECTED)
     {

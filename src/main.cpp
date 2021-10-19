@@ -2,9 +2,8 @@
 #include <Arduino.h>
 #include <TimeLib.h>
 #include <TimeZoneInfo.h>
-#include <SAMDTimerInterrupt.h>
 
-#include "wifi.h"
+#include "wifi_local.h"
 #include "ntp.h"
 #include "timezone.h"
 #include "display.h"
@@ -32,8 +31,6 @@ volatile timespec currentTime = {0, 0};
 volatile uint8_t currentBrightness = DEFAULT_BRIGHTNESS;
 
 volatile SyncSource lastSyncSource = SyncSource::none;
-
-SAMDTimer TickTimer(TIMER_TCC);
 
 TimeZoneInfo tzInfo;
 
@@ -125,6 +122,7 @@ void adjustBrightness()
 void setup()
 {
   Serial.begin(9600);
+  delay(4000);
 
   tzInfo.setLocation_P(tzData);
 
@@ -133,7 +131,7 @@ void setup()
     Serial.println("Couldn't find RTC");
     Serial.flush();
     abort();
-  }
+  };
 
   // Do RTC sync before display and WiFi start to display time earlier.
   Serial.println("Performing early RTC sync.");
@@ -148,10 +146,8 @@ void setup()
   displayUpdate();
   lastDisplayUpdate = millis();
 
-  TickTimer.attachInterruptInterval(HW_TICK_TIMER_INTERVAL_MS * 1000, tick);
-
   wifiBegin();
-  wifiLowPower();
+  //wifiLowPower();
 
   // Performing first full sync.
   sync();
@@ -160,6 +156,8 @@ void setup()
 
 void loop()
 {
+  tick();
+
   uint32_t currentMillis = millis();
   if (currentMillis < previousMillis)
   {
@@ -187,5 +185,5 @@ void loop()
   }
 
   previousMillis = currentMillis;
-  delay(8);
+  delay(10);
 }

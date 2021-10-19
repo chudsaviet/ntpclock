@@ -4,7 +4,7 @@
 #include <Arduino.h>
 #include <NTPClient.h>
 
-#include "wifi.h"
+#include "wifi_local.h"
 
 #include "secrets.h"
 

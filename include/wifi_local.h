@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 #include <SPI.h>
-#include <WiFiNINA.h>
+#include <WiFi.h>
 
 #include "secrets.h"
 
