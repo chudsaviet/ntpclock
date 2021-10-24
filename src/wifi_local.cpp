@@ -73,25 +73,6 @@ void wifiEnd()
     WiFi.disconnect();
 }
 
-void wifiLowPower()
-{
-    Serial.println("Putting WiFi to low power mode.");
-    WiFi.setSleep(WIFI_PS_MIN_MODEM);
-}
-
-void wifiNoLowPower()
-{
-    Serial.println("Putting WiFi to full operational mode.");
-    WiFi.setSleep(WIFI_PS_NONE);
-    int status = WL_IDLE_STATUS;
-    while (status != WL_CONNECTED)
-    {
-        status = WiFi.status();
-        // We can't do a big delay here because clock shall tick.
-        delay(1);
-    }
-}
-
 void wifiDisconnect()
 {
     Serial.println("Disconnecting WiFi.");

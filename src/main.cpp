@@ -147,7 +147,6 @@ void setup()
   lastDisplayUpdate = millis();
 
   wifiBegin();
-  //wifiLowPower();
 
   // Performing first full sync.
   sync();
@@ -185,5 +184,5 @@ void loop()
   }
 
   previousMillis = currentMillis;
-  delay(10);
+  delay(HW_TICK_TIMER_INTERVAL_MS);
 }
