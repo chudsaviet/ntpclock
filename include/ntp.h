@@ -3,8 +3,9 @@
 #include <time.h>
 #include <Arduino.h>
 #include <NTPClient.h>
+#include "esp_sntp.h"
 
-#include "wifi.h"
+#include "wifi_local.h"
 
 #include "secrets.h"
 

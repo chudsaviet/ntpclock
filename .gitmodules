@@ -7,9 +7,6 @@
 [submodule "lib/Adafruit_VEML7700"]
 	path = lib/Adafruit_VEML7700
 	url = https://github.com/adafruit/Adafruit_VEML7700.git
-[submodule "lib/WiFiNINA"]
-	path = lib/WiFiNINA
-	url = https://github.com/arduino-libraries/WiFiNINA.git
 [submodule "lib/NTPClient"]
 	path = lib/NTPClient
 	url = https://github.com/chudsaviet/NTPClient.git
@@ -26,6 +23,3 @@
 [submodule "lib/Adafruit-GFX-Library"]
 	path = lib/Adafruit-GFX-Library
 	url = https://github.com/adafruit/Adafruit-GFX-Library.git
-[submodule "lib/SAMD_TimerInterrupt"]
-	path = lib/SAMD_TimerInterrupt
-	url = https://github.com/khoih-prog/SAMD_TimerInterrupt.git
