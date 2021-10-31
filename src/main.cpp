@@ -75,37 +75,10 @@ void rtcSync()
   lastSyncSource = SyncSource::rtc;
 }
 
-bool ntpSync()
-{
-  timespec ntpTime = ntpGetTime();
-
-  if (ntpTime.tv_sec != 0 || ntpTime.tv_nsec != 0)
-  {
-    currentTime.tv_nsec = ntpTime.tv_nsec;
-    currentTime.tv_sec = tzInfo.utc2local(ntpTime.tv_sec);
-    lastSyncSource = SyncSource::ntp;
-    setRTC(ntpTime);
-    return true;
-  }
-  else
-  {
-    return false;
-  }
-}
-
 void sync()
 {
-  Serial.println("Attempting NTP sync...");
-  if (ntpSync())
-  {
-    Serial.println("NTP sync successful.");
-  }
-  else
-  {
-    Serial.println("NTP sync failed.");
-    Serial.println("Performing RTC sync.");
-    rtcSync();
-  }
+  Serial.println("Performing RTC sync.");
+  rtcSync();
 }
 
 void adjustBrightness()

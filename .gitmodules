@@ -7,9 +7,6 @@
 [submodule "lib/Adafruit_VEML7700"]
 	path = lib/Adafruit_VEML7700
 	url = https://github.com/adafruit/Adafruit_VEML7700.git
-[submodule "lib/NTPClient"]
-	path = lib/NTPClient
-	url = https://github.com/chudsaviet/NTPClient.git
 	branch = hires-timestamp_reintegrate-pr-102
 [submodule "lib/Time"]
 	path = lib/Time
