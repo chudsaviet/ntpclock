@@ -8,4 +8,4 @@
 
 #include "secrets.h"
 
-#define NTP_ERA 0
+void ntpBegin();

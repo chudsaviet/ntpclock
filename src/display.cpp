@@ -23,3 +23,11 @@ void display(time_t time, bool showColons, uint8_t brightness)
     }
     clockDisplay.writeDisplay();
 }
+
+void displayUpdate(uint8_t currentBrightness)
+{
+    timeval currentTime;
+    gettimeofday(&currentTime, NULL);
+
+    display(currentTime.tv_sec, true, currentBrightness);
+}

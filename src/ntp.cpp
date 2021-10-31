@@ -8,3 +8,10 @@
 #else
 #define NTP_SERVER_FINAL "pool.ntp.org"
 #endif
+
+void ntpBegin()
+{
+    sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    sntp_setservername(0, NTP_SERVER_FINAL);
+    sntp_init();
+}

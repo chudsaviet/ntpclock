@@ -7,14 +7,21 @@ bool beginRTC()
     return rtc.begin();
 }
 
-timespec getRTC()
+timeval getRTC()
 {
-    // TODO: implemnt sub-second precision in RTC.
     DateTime rtcTime = rtc.now();
     return {static_cast<time_t>(rtcTime.unixtime()), 0};
 }
 
-void setRTC(timespec time)
+void rtcSync()
+{
+    timeval rtcTime = getRTC();
+    rtcTime.tv_sec = utc2local(rtcTime.tv_sec);
+
+    settimeofday(&rtcTime, {0});
+}
+
+void setRTC(timeval time)
 {
     Serial.print("Setting RTC to ");
     Serial.println(time.tv_sec);

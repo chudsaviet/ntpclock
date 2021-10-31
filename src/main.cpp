@@ -1,11 +1,7 @@
-#include <time.h>
 #include <Arduino.h>
-#include <TimeLib.h>
-#include <TimeZoneInfo.h>
 
 #include "wifi_local.h"
 #include "ntp.h"
-#include "timezone.h"
 #include "display.h"
 #include "rtc.h"
 #include "als.h"
@@ -26,60 +22,11 @@ enum SyncSource
   ntp
 };
 
-// RTC and NTP carry UTC time, currentTime carries local time.
-volatile timespec currentTime = {0, 0};
 volatile uint8_t currentBrightness = DEFAULT_BRIGHTNESS;
 
-volatile SyncSource lastSyncSource = SyncSource::none;
-
-TimeZoneInfo tzInfo;
-
 uint32_t previousMillis = 0;
-uint32_t lastSync = 0;
 uint32_t lastBrightnessAdjustment = 0;
 uint32_t lastDisplayUpdate = 0;
-
-bool currentTimeInc(unsigned long inc_ms)
-{
-  currentTime.tv_nsec += HW_TICK_TIMER_INTERVAL_MS * 1000000L;
-  if (currentTime.tv_nsec > 1000000000L)
-  {
-    currentTime.tv_sec += 1LL;
-    currentTime.tv_nsec -= 1000000000L;
-    return true;
-  }
-  else
-  {
-    return false;
-  }
-}
-
-void tick()
-{
-  currentTimeInc(HW_TICK_TIMER_INTERVAL_MS);
-}
-
-void displayUpdate()
-{
-  display(currentTime.tv_sec, lastSyncSource == SyncSource::ntp, currentBrightness);
-}
-
-void rtcSync()
-{
-  timespec rtcTime = getRTC();
-  rtcTime.tv_sec = tzInfo.utc2local(rtcTime.tv_sec);
-
-  currentTime.tv_sec = rtcTime.tv_sec;
-  // Not touching currentTime.tv_nsec because RTC does not offer subsecond precision.
-
-  lastSyncSource = SyncSource::rtc;
-}
-
-void sync()
-{
-  Serial.println("Performing RTC sync.");
-  rtcSync();
-}
 
 void adjustBrightness()
 {
@@ -97,8 +44,6 @@ void setup()
   Serial.begin(9600);
   delay(4000);
 
-  tzInfo.setLocation_P(tzData);
-
   if (!beginRTC())
   {
     Serial.println("Couldn't find RTC");
@@ -109,38 +54,32 @@ void setup()
   // Do RTC sync before display and WiFi start to display time earlier.
   Serial.println("Performing early RTC sync.");
   rtcSync();
-  lastSync = millis();
 
   alsBegin();
   adjustBrightness();
   lastBrightnessAdjustment = millis();
 
   displayBegin();
-  displayUpdate();
+  displayUpdate(currentBrightness);
   lastDisplayUpdate = millis();
 
   wifiBegin();
 
-  // Performing first full sync.
-  sync();
-  lastSync = millis();
+  ntpBegin();
 }
 
 void loop()
 {
-  tick();
-
   uint32_t currentMillis = millis();
   if (currentMillis < previousMillis)
   {
-    lastSync = 0;
     lastBrightnessAdjustment = 0;
     lastDisplayUpdate = 0;
   }
 
   if (currentMillis - lastDisplayUpdate > DISPLAY_UPDATE_INTERVAL_MS)
   {
-    displayUpdate();
+    displayUpdate(currentBrightness);
     lastDisplayUpdate = currentMillis;
   }
 
@@ -148,12 +87,6 @@ void loop()
   {
     adjustBrightness();
     lastBrightnessAdjustment = currentMillis;
-  }
-
-  if (currentMillis - lastSync > CLOCK_SYNC_INTERVAL_MS)
-  {
-    sync();
-    lastSync = currentMillis;
   }
 
   previousMillis = currentMillis;
