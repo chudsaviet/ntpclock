@@ -24,10 +24,10 @@ void display(time_t time, bool showColons, uint8_t brightness)
     clockDisplay.writeDisplay();
 }
 
-void displayUpdate(uint8_t currentBrightness)
+void displayUpdate(uint8_t currentBrightness, bool showColons)
 {
     timeval currentTime;
     gettimeofday(&currentTime, NULL);
 
-    display(currentTime.tv_sec, true, currentBrightness);
+    display(currentTime.tv_sec, showColons, currentBrightness);
 }

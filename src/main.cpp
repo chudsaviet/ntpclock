@@ -30,6 +30,7 @@ uint32_t previousMillis = 0;
 uint32_t lastBrightnessAdjustment = 0;
 uint32_t lastDisplayUpdate = 0;
 uint32_t lastRTCSync = 0;
+SyncSource lastSyncSource = SyncSource::none;
 
 void adjustBrightness()
 {
@@ -63,7 +64,7 @@ void setup()
   lastBrightnessAdjustment = millis();
 
   displayBegin();
-  displayUpdate(currentBrightness);
+  displayUpdate(currentBrightness, false);
   lastDisplayUpdate = millis();
 
   wifiBegin();
@@ -84,7 +85,7 @@ void loop()
 
   if (currentMillis - lastDisplayUpdate > DISPLAY_UPDATE_INTERVAL_MS)
   {
-    displayUpdate(currentBrightness);
+    displayUpdate(currentBrightness, lastSyncSource == SyncSource::ntp);
     lastDisplayUpdate = currentMillis;
   }
 
@@ -94,11 +95,18 @@ void loop()
     lastBrightnessAdjustment = currentMillis;
   }
 
-  if (currentMillis - getLastNTPSyncMillis() > MAX_NTP_SYNC_INTERVAL_MS &&
-      currentMillis - lastRTCSync > RTC_SYNC_INTERVAL_MS)
+  if (currentMillis - getLastNTPSyncMillis() > MAX_NTP_SYNC_INTERVAL_MS)
   {
-    rtcSync();
-    lastRTCSync = currentMillis;
+    if (currentMillis - lastRTCSync > RTC_SYNC_INTERVAL_MS)
+    {
+      rtcSync();
+      lastRTCSync = currentMillis;
+      lastSyncSource = SyncSource::rtc;
+    }
+  }
+  else
+  {
+    lastSyncSource = SyncSource::ntp;
   }
 
   previousMillis = currentMillis;

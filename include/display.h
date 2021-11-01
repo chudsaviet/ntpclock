@@ -14,4 +14,4 @@
 
 void displayBegin();
 void display(time_t time, bool showColons, uint8_t brightness);
-void displayUpdate(uint8_t currentBrightness);
+void displayUpdate(uint8_t currentBrightness, bool showColons);
