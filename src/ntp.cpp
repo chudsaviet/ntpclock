@@ -11,6 +11,7 @@ volatile unsigned long lastSNTPSyncMillis = 0;
 void sntpSyncCallback(timeval *tv)
 {
     lastSNTPSyncMillis = millis();
+    setRTC(*tv);
 }
 
 void ntpBegin()
