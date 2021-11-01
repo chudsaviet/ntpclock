@@ -16,9 +16,7 @@ timeval getRTC()
 void rtcSync()
 {
     timeval rtcTime = getRTC();
-    rtcTime.tv_sec = utc2local(rtcTime.tv_sec);
-
-    settimeofday(&rtcTime, {0});
+    settimeofday(&rtcTime, NULL);
 }
 
 void setRTC(timeval time)

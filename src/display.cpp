@@ -29,5 +29,7 @@ void displayUpdate(uint8_t currentBrightness, bool showColons)
     timeval currentTime;
     gettimeofday(&currentTime, NULL);
 
+    currentTime.tv_sec = utc2local(currentTime.tv_sec);
+
     display(currentTime.tv_sec, showColons, currentBrightness);
 }

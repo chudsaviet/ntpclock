@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <esp_sntp.h>
 
 #include "wifi_local.h"
 #include "ntp.h"
@@ -47,6 +48,8 @@ void setup()
 {
   Serial.begin(9600);
   delay(4000);
+
+  tzBegin();
 
   if (!beginRTC())
   {
