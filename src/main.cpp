@@ -6,9 +6,11 @@
 #include "rtc.h"
 #include "als.h"
 
-#define HW_TICK_TIMER_INTERVAL_MS 10L
+#define MAIN_LOOP_DELAY_INTERVAL_MS 128L
 #define DISPLAY_UPDATE_INTERVAL_MS 32L
-#define CLOCK_SYNC_INTERVAL_MS 1048576L
+#define MAX_NTP_SYNC_INTERVAL_MS 1800000L // 30 min
+#define RTC_SYNC_INTERVAL_MS 1800000L     // 30 min
+
 #define BRIGHTNESS_ADJUST_INTERVAL_MS 1024L
 #define DEFAULT_BRIGHTNESS 8L
 #define MAX_BRIGHTNESS 16L
@@ -27,6 +29,7 @@ volatile uint8_t currentBrightness = DEFAULT_BRIGHTNESS;
 uint32_t previousMillis = 0;
 uint32_t lastBrightnessAdjustment = 0;
 uint32_t lastDisplayUpdate = 0;
+uint32_t lastRTCSync = 0;
 
 void adjustBrightness()
 {
@@ -75,6 +78,8 @@ void loop()
   {
     lastBrightnessAdjustment = 0;
     lastDisplayUpdate = 0;
+    lastRTCSync = 0;
+    setLastNTPSyncMillis(0);
   }
 
   if (currentMillis - lastDisplayUpdate > DISPLAY_UPDATE_INTERVAL_MS)
@@ -89,6 +94,13 @@ void loop()
     lastBrightnessAdjustment = currentMillis;
   }
 
+  if (currentMillis - getLastNTPSyncMillis() > MAX_NTP_SYNC_INTERVAL_MS &&
+      currentMillis - lastRTCSync > RTC_SYNC_INTERVAL_MS)
+  {
+    rtcSync();
+    lastRTCSync = currentMillis;
+  }
+
   previousMillis = currentMillis;
-  delay(HW_TICK_TIMER_INTERVAL_MS);
+  delay(MAIN_LOOP_DELAY_INTERVAL_MS);
 }

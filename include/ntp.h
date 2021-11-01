@@ -9,3 +9,6 @@
 #include "secrets.h"
 
 void ntpBegin();
+
+uint32_t getLastNTPSyncMillis();
+void setLastNTPSyncMillis(uint32_t m);
