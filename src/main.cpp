@@ -13,7 +13,7 @@
 #define RTC_SYNC_INTERVAL_MS 1800000L     // 30 min
 
 #define BRIGHTNESS_ADJUST_INTERVAL_MS 1024L
-#define DEFAULT_BRIGHTNESS 8L
+#define DEFAULT_BRIGHTNESS 10L
 #define MAX_BRIGHTNESS 16L
 #define MIN_BRIGNTNESS 0L
 #define MAX_LUX 500.0F
@@ -36,6 +36,8 @@ SyncSource lastSyncSource = SyncSource::none;
 void adjustBrightness()
 {
   float lux = alsGetLux();
+  Serial.print("ALS lux: ");
+  Serial.println(lux);
 
   float k = lux / MAX_LUX;
   currentBrightness = min(MAX_BRIGHTNESS,
@@ -62,10 +64,6 @@ void setup()
   Serial.println("Performing early RTC sync.");
   rtcSync();
 
-  alsBegin();
-  adjustBrightness();
-  lastBrightnessAdjustment = millis();
-
   displayBegin();
   displayUpdate(currentBrightness, false);
   lastDisplayUpdate = millis();
@@ -73,6 +71,10 @@ void setup()
   wifiBegin();
 
   ntpBegin();
+
+  alsBegin();
+  adjustBrightness();
+  lastBrightnessAdjustment = millis();
 }
 
 void loop()
