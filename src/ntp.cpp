@@ -8,14 +8,18 @@
 
 volatile unsigned long lastSNTPSyncMillis = 0;
 
+SemaphoreHandle_t i2cSemaphoreNTP;
+
 void sntpSyncCallback(timeval *tv)
 {
     lastSNTPSyncMillis = millis();
-    setRTC(*tv);
+    setRTC(*tv, i2cSemaphoreNTP);
 }
 
-void ntpBegin()
+void ntpBegin(SemaphoreHandle_t i2cSemaphoreExternal)
 {
+    i2cSemaphoreNTP = i2cSemaphoreExternal;
+
     sntp_set_sync_mode(SNTP_SYNC_MODE_IMMED);
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
     sntp_setservername(0, NTP_SERVER_FINAL);

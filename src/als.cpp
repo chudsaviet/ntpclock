@@ -5,22 +5,42 @@
 
 Adafruit_VEML7700 veml = Adafruit_VEML7700();
 
-void alsBegin()
+float prevLux = 0.0f;
+
+void alsBegin(SemaphoreHandle_t i2cSemaphore)
 {
-    Serial.println("ALS initialization...");
-    if (!veml.begin())
+    if (xSemaphoreTake(i2cSemaphore, pdMS_TO_TICKS(ALS_SEMAPHORE_TIMEOUT_MS)) == pdPASS)
     {
-        veml.setGain(ALS_GAIN);
-        veml.setIntegrationTime(ALS_INTEGRATION_TIME);
-        Serial.println("ALS intialized.");
+        Serial.println("ALS initialization...");
+        if (!veml.begin())
+        {
+            veml.setGain(ALS_GAIN);
+            veml.setIntegrationTime(ALS_INTEGRATION_TIME);
+            Serial.println("ALS intialized.");
+        }
+        else
+        {
+            Serial.println("ALS not found.");
+        }
+        xSemaphoreGive(i2cSemaphore);
     }
     else
     {
-        Serial.println("ALS not found.");
+        Serial.println("alsBegin: couldn't take i2c semaphore. Not initializing.");
     }
 }
 
-float alsGetLux()
+float alsGetLux(SemaphoreHandle_t i2cSemaphore)
 {
-    return veml.readLux();
+    if (xSemaphoreTake(i2cSemaphore, pdMS_TO_TICKS(ALS_SEMAPHORE_TIMEOUT_MS)) == pdPASS)
+    {
+        prevLux = veml.readLux();
+        xSemaphoreGive(i2cSemaphore);
+        return prevLux;
+    }
+    else
+    {
+        Serial.println("alsBegin: couldn't take i2c semaphore.");
+        return prevLux;
+    }
 }

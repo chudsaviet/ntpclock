@@ -9,7 +9,7 @@
 
 #include "secrets.h"
 
-void ntpBegin();
+void ntpBegin(SemaphoreHandle_t i2cSemaphoreExternal);
 
 uint32_t getLastNTPSyncMillis();
 void setLastNTPSyncMillis(uint32_t m);

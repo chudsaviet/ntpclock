@@ -10,10 +10,14 @@
 
 #include "tz_info_local.h"
 
-bool beginRTC();
+#define BEGIN_RTC_SEMAPHORE_TIMEOUT_MS 2048L
 
-timeval getRTC();
+#define ACCESS_RTC_SEMAPHORE_TIMEOUT_MS 128L
 
-void rtcSync();
+bool beginRTC(SemaphoreHandle_t i2cSemaphore);
 
-void setRTC(timeval time);
+timeval getRTC(SemaphoreHandle_t i2cSemaphore);
+
+void rtcSync(SemaphoreHandle_t i2cSemaphore);
+
+void setRTC(timeval time, SemaphoreHandle_t i2cSemaphore);

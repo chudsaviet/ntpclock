@@ -13,6 +13,9 @@
 
 #include "tz_info_local.h"
 
-void displayBegin();
-void display(time_t time, bool showColons, uint8_t brightness);
-void displayUpdate(uint8_t currentBrightness, bool showColons);
+#define DISPLAY_BEGIN_SEMAPHORE_TIMEOUT_MS 2048
+#define DISPLAY_UPDATE_SEMAPHORE_TIMEOUT_MS 512
+
+void displayBegin(SemaphoreHandle_t i2cSemaphore);
+void display(time_t time, bool flickColons, uint8_t brightness);
+void displayUpdate(uint8_t currentBrightness, bool flickColons, SemaphoreHandle_t i2cSemaphore);

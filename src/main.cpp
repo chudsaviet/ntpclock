@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <FreeRTOS.h>
 #include <esp_sntp.h>
 
 #include "wifi_local.h"
@@ -9,8 +10,8 @@
 
 #define MAIN_LOOP_DELAY_INTERVAL_MS 128L
 #define DISPLAY_UPDATE_INTERVAL_MS 32L
-#define MAX_NTP_SYNC_INTERVAL_MS 1800000L // 30 min
-#define RTC_SYNC_INTERVAL_MS 1800000L     // 30 min
+#define MAX_NTP_SYNC_INTERVAL_MS 14400000L // 4 hours
+#define RTC_SYNC_INTERVAL_MS 1800000L      // 30 min
 
 #define BRIGHTNESS_ADJUST_INTERVAL_MS 1024L
 #define DEFAULT_BRIGHTNESS 10L
@@ -33,9 +34,11 @@ uint32_t lastDisplayUpdate = 0;
 uint32_t lastRTCSync = 0;
 SyncSource lastSyncSource = SyncSource::none;
 
+SemaphoreHandle_t i2cSemaphore;
+
 void adjustBrightness()
 {
-  float lux = alsGetLux();
+  float lux = alsGetLux(i2cSemaphore);
   Serial.print("ALS lux: ");
   Serial.println(lux);
 
@@ -51,9 +54,12 @@ void setup()
   Serial.begin(9600);
   delay(4000);
 
+  i2cSemaphore = xSemaphoreCreateBinary();
+  xSemaphoreGive(i2cSemaphore);
+
   tzBegin();
 
-  if (!beginRTC())
+  if (!beginRTC(i2cSemaphore))
   {
     Serial.println("Couldn't find RTC");
     Serial.flush();
@@ -62,17 +68,17 @@ void setup()
 
   // Do RTC sync before display and WiFi start to display time earlier.
   Serial.println("Performing early RTC sync.");
-  rtcSync();
+  rtcSync(i2cSemaphore);
 
-  displayBegin();
-  displayUpdate(currentBrightness, false);
+  displayBegin(i2cSemaphore);
+  displayUpdate(currentBrightness, false, i2cSemaphore);
   lastDisplayUpdate = millis();
 
   wifiBegin();
 
-  ntpBegin();
+  ntpBegin(i2cSemaphore);
 
-  alsBegin();
+  alsBegin(i2cSemaphore);
   adjustBrightness();
   lastBrightnessAdjustment = millis();
 }
@@ -90,7 +96,7 @@ void loop()
 
   if (currentMillis - lastDisplayUpdate > DISPLAY_UPDATE_INTERVAL_MS)
   {
-    displayUpdate(currentBrightness, lastSyncSource == SyncSource::ntp);
+    displayUpdate(currentBrightness, lastSyncSource == SyncSource::ntp, i2cSemaphore);
     lastDisplayUpdate = currentMillis;
   }
 
@@ -104,7 +110,7 @@ void loop()
   {
     if (currentMillis - lastRTCSync > RTC_SYNC_INTERVAL_MS)
     {
-      rtcSync();
+      rtcSync(i2cSemaphore);
       lastRTCSync = currentMillis;
       lastSyncSource = SyncSource::rtc;
     }
