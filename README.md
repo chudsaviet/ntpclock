@@ -1,13 +1,15 @@
 NTP synchronized desktop 7-segment clock
 =======================================================
-![Front view](/readme_assets/assembly_front.jpg)
-![Inside view](/readme_assets/assembly_guts.jpg)
-
 Features
 --------
 1. NTP sunchronization using WiFi.
 2. RTC backup - will show time from a high precision RTC if WiFi is not available.
 3. Automatic display brightness control.
+
+Pictures
+--------
+![Front view](/readme_assets/assembly_front.jpg)
+![Inside view](/readme_assets/assembly_guts.jpg)
 
 Components
 ----------
