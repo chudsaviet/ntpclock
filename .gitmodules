@@ -1,22 +1,3 @@
-[submodule "lib/Adafruit_LED_Backpack"]
-	path = lib/Adafruit_LED_Backpack
-	url = https://github.com/adafruit/Adafruit_LED_Backpack.git
-[submodule "lib/RTClib"]
-	path = lib/RTClib
-	url = https://github.com/adafruit/RTClib.git
-[submodule "lib/Adafruit_VEML7700"]
-	path = lib/Adafruit_VEML7700
-	url = https://github.com/adafruit/Adafruit_VEML7700.git
-	branch = hires-timestamp_reintegrate-pr-102
-[submodule "lib/Time"]
-	path = lib/Time
-	url = https://github.com/PaulStoffregen/Time.git
-[submodule "lib/TimeZoneInfo"]
-	path = lib/TimeZoneInfo
-	url = git@github.com:chudsaviet/TimeZoneInfo.git
-[submodule "lib/Adafruit_BusIO"]
-	path = lib/Adafruit_BusIO
-	url = https://github.com/adafruit/Adafruit_BusIO.git
-[submodule "lib/Adafruit-GFX-Library"]
-	path = lib/Adafruit-GFX-Library
-	url = https://github.com/adafruit/Adafruit-GFX-Library.git
+[submodule "components/arduino-esp32"]
+	path = components/arduino-esp32
+	url = https://github.com/chudsaviet/arduino-esp32.git

@@ -7,3 +7,5 @@ secrets.h
 *-cache.lib
 *bak
 .DS_Store
+build
+sdkconfig.old
