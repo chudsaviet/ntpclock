@@ -24,5 +24,5 @@ Components
 
 Software
 --------
-1. PlatformIO project.
-2. Arduino-on-ESP32 framework - includes custom FreeRTOS.
+1. ESP-IDF (built on FreeRTOS).
+2. Arduino as ESP-IDF component.

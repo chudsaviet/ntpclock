@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Arduino.h>
-#include <FreeRTOS.h>
 #include <esp_sntp.h>
 
 #include "wifi_local.h"
