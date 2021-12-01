@@ -1,91 +1,53 @@
-#include "main.h"
+#include <stdio.h>
+#include <freertos/FreeRTOS.h>
+#include <Arduino.h>
 
-volatile uint8_t currentBrightness = DEFAULT_BRIGHTNESS;
+#include <esp_sntp.h>
+#include <nvs_flash.h>
 
-uint32_t previousMillis = 0;
-uint32_t lastRTCSync = 0;
-volatile SyncSource lastSyncSource = SyncSource::none;
+#include "arduino_main.h"
+#include "arduino_task.h"
+#include "start_wifi.h"
+#include "secrets.h"
 
-SemaphoreHandle_t i2cSemaphore = NULL;
-TaskHandle_t xDisplayTaskHandle = NULL;
+static const char *TAG = "main.cpp";
 
-SyncSource getLastSyncSource()
+TaskHandle_t xArduinoTaskHandle = NULL;
+
+extern "C" void app_main(void)
 {
-  return lastSyncSource;
-}
+    // Start Arduino task.
+    initArduino();
+    arduinoSetup();
+    xTaskCreatePinnedToCore(
+        vArduinoTask,
+        "Arduino loop",
+        configMINIMAL_STACK_SIZE * 2,
+        NULL,
+        tskIDLE_PRIORITY,
+        &xArduinoTaskHandle,
+        1);
 
-void adjustBrightness()
-{
-  float lux = alsGetLux(i2cSemaphore);
-  Serial.print("ALS lux: ");
-  Serial.println(lux);
-
-  float k = lux / MAX_LUX;
-  currentBrightness = min(MAX_BRIGHTNESS,
-                          MIN_BRIGNTNESS +
-                              static_cast<uint8_t>(
-                                  static_cast<float>(MAX_BRIGHTNESS - MIN_BRIGNTNESS) * k));
-}
-
-void setup()
-{
-  Serial.begin(9600);
-  delay(4000);
-
-  i2cSemaphore = xSemaphoreCreateBinary();
-  xSemaphoreGive(i2cSemaphore);
-
-  tzBegin();
-
-  if (!beginRTC(i2cSemaphore))
-  {
-    Serial.println("Couldn't find RTC");
-    Serial.flush();
-    abort();
-  };
-
-  // Do RTC sync before display and WiFi start to display time earlier.
-  Serial.println("Performing early RTC sync.");
-  rtcSync(i2cSemaphore);
-
-  xTaskCreatePinnedToCore(
-      vDisplayTask,
-      "Display update",
-      configMINIMAL_STACK_SIZE * 2,
-      &i2cSemaphore,
-      tskIDLE_PRIORITY,
-      &xDisplayTaskHandle,
-      1);
-  //vTaskStartScheduler();
-
-  wifiBegin();
-
-  ntpBegin(i2cSemaphore);
-}
-
-void loop()
-{
-  uint32_t currentMillis = millis();
-  if (currentMillis < previousMillis)
-  {
-    lastRTCSync = 0;
-    setLastNTPSyncMillis(0);
-  }
-
-  if (currentMillis - getLastNTPSyncMillis() > MAX_NTP_SYNC_INTERVAL_MS)
-  {
-    if (currentMillis - lastRTCSync > RTC_SYNC_INTERVAL_MS)
+    //Initialize NVS (Non-Volatile Storage, flash).
+    ESP_LOGI(TAG, "Initializing NVS");
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
     {
-      rtcSync(i2cSemaphore);
-      lastRTCSync = currentMillis;
-      lastSyncSource = SyncSource::rtc;
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
     }
-  }
-  else
-  {
-    lastSyncSource = SyncSource::ntp;
-  }
+    ESP_ERROR_CHECK(ret);
 
-  previousMillis = currentMillis;
-  vTaskDelay(pdMS_TO_TICKS(MAIN_LOOP_DELAY_INTERVAL_MS));
+    // Start WiFi.
+    ESP_LOGI(TAG, "Starting WiFi");
+    start_wifi();
+
+    // Start SNTP.
+    sntp_init();
+
+    // Work indefinitely.
+    while (true)
+    {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
 }

@@ -2,7 +2,7 @@
 
 #include "display.h"
 #include "als.h"
-#include "main.h"
+#include "arduino_main.h"
 
 #define DISPLAY_LOOP_DELAY_MS 128L
 #define MAX_BRIGHTNESS 16L
