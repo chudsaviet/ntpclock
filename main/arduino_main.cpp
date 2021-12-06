@@ -47,7 +47,7 @@ void arduinoSetup()
 
   xTaskCreatePinnedToCore(
       vDisplayTask,
-      "Display update",
+      "Display",
       configMINIMAL_STACK_SIZE * 2,
       &i2cSemaphore,
       tskIDLE_PRIORITY,

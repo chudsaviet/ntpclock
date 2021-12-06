@@ -7,6 +7,6 @@ idf_component_register(SRCS
     "ntp.cpp"
     "rtc.cpp"
     "tz_info_local.cpp"
-    "start_wifi.cpp"
+    "wifi_control.cpp"
     "arduino_task.cpp"
 INCLUDE_DIRS ".")

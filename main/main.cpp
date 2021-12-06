@@ -7,12 +7,13 @@
 
 #include "arduino_main.h"
 #include "arduino_task.h"
-#include "start_wifi.h"
+#include "wifi_control.h"
 #include "secrets.h"
 
 static const char *TAG = "main.cpp";
 
 TaskHandle_t xArduinoTaskHandle = NULL;
+TaskHandle_t xWifiControlTaskHandle = NULL;
 
 extern "C" void app_main(void)
 {
@@ -38,9 +39,16 @@ extern "C" void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
-    // Start WiFi.
-    ESP_LOGI(TAG, "Starting WiFi");
-    start_wifi();
+    // Starting WiFi control task.
+
+    xTaskCreatePinnedToCore(
+        vWifiControlTask,
+        "WiFi control",
+        configMINIMAL_STACK_SIZE * 4,
+        NULL,
+        tskIDLE_PRIORITY,
+        &xWifiControlTaskHandle,
+        1);
 
     // Start SNTP.
     sntp_init();

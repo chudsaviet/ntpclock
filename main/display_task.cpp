@@ -6,7 +6,7 @@ void vDisplayTask(void *pvParameters)
     alsBegin(i2cSemaphore);
     displayBegin(i2cSemaphore);
 
-    while (true)
+    for (;;)
     {
         float lux = alsGetLux(i2cSemaphore);
 
@@ -18,4 +18,5 @@ void vDisplayTask(void *pvParameters)
         displayUpdate(currentBrightness, getLastSyncSource() == SyncSource::ntp, i2cSemaphore);
         vTaskDelay(pdMS_TO_TICKS(DISPLAY_LOOP_DELAY_MS));
     }
+    vTaskDelete(NULL);
 }

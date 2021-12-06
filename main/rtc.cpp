@@ -30,7 +30,6 @@ timeval getRTC(SemaphoreHandle_t i2cSemaphore)
     {
         Serial.println("getRTC: couldn't take i2c semaphore.");
         timeval osTime;
-        // TODO: set timezone?
         gettimeofday(&osTime, NULL);
         return osTime;
     }
