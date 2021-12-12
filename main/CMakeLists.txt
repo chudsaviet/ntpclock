@@ -9,4 +9,5 @@ idf_component_register(SRCS
     "tz_info_local.cpp"
     "wifi_control.cpp"
     "arduino_task.cpp"
+    "filesystem.cpp"
 INCLUDE_DIRS ".")

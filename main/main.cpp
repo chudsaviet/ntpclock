@@ -8,6 +8,7 @@
 #include "arduino_main.h"
 #include "arduino_task.h"
 #include "wifi_control.h"
+#include "filesystem.h"
 #include "secrets.h"
 
 static const char *TAG = "main.cpp";
@@ -17,6 +18,9 @@ TaskHandle_t xWifiControlTaskHandle = NULL;
 
 extern "C" void app_main(void)
 {
+    // Init filesystem.
+    filesystem_init();
+
     // Start Arduino task.
     initArduino();
     arduinoSetup();
