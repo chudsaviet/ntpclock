@@ -1,3 +1,6 @@
 [submodule "components/arduino-esp32"]
 	path = components/arduino-esp32
 	url = https://github.com/chudsaviet/arduino-esp32.git
+[submodule "components/esp32-button"]
+	path = components/esp32-button
+	url = https://github.com/chudsaviet/esp32-button.git

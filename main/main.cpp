@@ -5,6 +5,8 @@
 #include <esp_sntp.h>
 #include <nvs_flash.h>
 
+#include <button.h>
+
 #include "arduino_main.h"
 #include "arduino_task.h"
 #include "wifi_control.h"
@@ -12,6 +14,9 @@
 #include "unique_id.h"
 
 #include "secrets.h"
+
+#define SET_BUTTON_GPIO 0
+#define BUTTON_QUEUE_TIMEOUT_MS 200
 
 static const char *TAG = "main.cpp";
 
@@ -62,9 +67,19 @@ extern "C" void app_main(void)
     // Start SNTP.
     sntp_init();
 
+    // Init button watcher task.
+    button_event_t ev;
+    QueueHandle_t button_events = button_init(PIN_BIT(SET_BUTTON_GPIO));
+
     // Work indefinitely.
-    while (true)
+    for (;;)
     {
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        if (xQueueReceive(button_events, &ev, pdMS_TO_TICKS(BUTTON_QUEUE_TIMEOUT_MS)))
+        {
+            if ((ev.pin == SET_BUTTON_GPIO) && (ev.event == BUTTON_UP))
+            {
+                ESP_LOGI(TAG, "Set button pressed and released.");
+            }
+        }
     }
 }
