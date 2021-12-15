@@ -15,6 +15,8 @@
 
 #include "secrets.h"
 
+#include "unique_id.h"
+
 /*
     Based on 
     https://github.com/espressif/esp-idf/blob/master/examples/wifi/getting_started/station/main/station_example_main.c
@@ -28,7 +30,11 @@ static EventGroupHandle_t s_wifi_event_group = NULL;
 #define WIFI_CONTROL_TASK_LOOP_DELAY_MS 4000
 #define WIFI_RESTART_TIMEOUT_SEC 900 // 15 min
 
+#define HOSTNAME_TEMPLATE "ntpclock-XXXXXXXX"
+#define HOSTNAME_SUFFIX_LENGTH_CHARS 8
+
 static const char *TAG = "wifi_control.cpp";
+static char hostname[sizeof HOSTNAME_TEMPLATE + 1] = {0};
 
 static int s_retry_num = 0;
 static timeval s_wifi_fail_timestamp = {0, 0};
@@ -91,9 +97,25 @@ void wifi_bits_wait()
     }
 }
 
+void init_hostname()
+{
+    uint8_t *unique_id = get_unique_id();
+
+    memcpy((void *)&hostname, &HOSTNAME_TEMPLATE, sizeof HOSTNAME_TEMPLATE);
+    for (uint8_t i = 0; i < HOSTNAME_SUFFIX_LENGTH_CHARS / 2; i++)
+    {
+        sprintf(
+            (char *)&hostname + sizeof HOSTNAME_TEMPLATE - HOSTNAME_SUFFIX_LENGTH_CHARS + i * 2 - 1,
+            "%02X",
+            unique_id[i]);
+    }
+}
+
 void wifi_start(void)
 {
     s_sta_netif = esp_netif_create_default_wifi_sta();
+
+    esp_netif_set_hostname(s_sta_netif, (char *)&hostname);
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
@@ -137,6 +159,9 @@ void wifi_restart()
 
 void vWifiControlTask(void *pvParameters)
 {
+    init_hostname();
+    ESP_LOGI(TAG, "Generated hostname: %s", hostname);
+
     ESP_LOGI(TAG, "Starting WiFi.");
     ESP_ERROR_CHECK(esp_netif_init());
 

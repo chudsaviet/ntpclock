@@ -12,6 +12,7 @@
 #include "wifi_control.h"
 #include "filesystem.h"
 #include "unique_id.h"
+#include "wpa_key_gen.h"
 
 #include "secrets.h"
 
@@ -78,7 +79,9 @@ extern "C" void app_main(void)
         {
             if ((ev.pin == SET_BUTTON_GPIO) && (ev.event == BUTTON_UP))
             {
-                ESP_LOGI(TAG, "Set button pressed and released.");
+                char wpa_key[WPA_KEY_LENGTH_CHARS + 1] = {0};
+                generate_wpa_key((char *)&wpa_key);
+                ESP_LOGI(TAG, "Generated WPA key: %s", (char *)&wpa_key);
             }
         }
     }

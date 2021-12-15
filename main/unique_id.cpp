@@ -1,5 +1,13 @@
 #include "unique_id.h"
 
+#include <esp_log.h>
+#include <esp_system.h>
+#include <nvs.h>
+#include <nvs_flash.h>
+#include <sha/sha_parallel_engine.h>
+
+#include "abort.h"
+
 #define TAG "unique_id.cpp"
 
 uint8_t global_unique_id[UNIQUE_ID_SIZE_BYTES];

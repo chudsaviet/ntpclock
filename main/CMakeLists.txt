@@ -12,5 +12,6 @@ idf_component_register(SRCS
     "tz_info_local.cpp"
     "unique_id.cpp"
     "wifi_control.cpp"
+    "wpa_key_gen.cpp"
 INCLUDE_DIRS "."
 )
