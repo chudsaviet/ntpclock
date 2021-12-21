@@ -106,6 +106,11 @@ void vDisplayTask(void *pvParameters)
                 setBrightness(lux);
             }
             break;
+            case DisplayCommand::SET_BLINK_COLONS:
+            {
+                blinkColons = (message.payload[0] > 0);
+            }
+            break;
             default:
                 break;
             }

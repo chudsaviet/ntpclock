@@ -10,7 +10,8 @@
 
 enum DisplayCommand
 {
-    SET_BRIGHTNESS
+    SET_BRIGHTNESS,
+    SET_BLINK_COLONS
 };
 
 struct DisplayCommandMessage

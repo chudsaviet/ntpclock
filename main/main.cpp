@@ -15,6 +15,7 @@
 #include "wpa_key_gen.h"
 #include "display.h"
 #include "als.h"
+#include "ntp.h"
 
 #include "secrets.h"
 
@@ -23,14 +24,17 @@
 
 static const char *TAG = "main.cpp";
 
-TaskHandle_t xArduinoTaskHandle = NULL;
-TaskHandle_t xWifiControlTaskHandle = NULL;
+static TaskHandle_t xArduinoTaskHandle = NULL;
+static TaskHandle_t xWifiControlTaskHandle = NULL;
 
-TaskHandle_t xDisplayTask = NULL;
-QueueHandle_t xDisplayTaskQueue = 0;
+static TaskHandle_t xDisplayTask = NULL;
+static QueueHandle_t xDisplayTaskQueue = 0;
 
-TaskHandle_t xAlsTask = NULL;
-QueueHandle_t xAlsOutputQueue = 0;
+static TaskHandle_t xAlsTask = NULL;
+static QueueHandle_t xAlsOutputQueue = 0;
+
+static TaskHandle_t xNtpTask = NULL;
+static QueueHandle_t xNtpOutputQueue = 0;
 
 extern "C" void app_main(void)
 {
@@ -85,7 +89,7 @@ extern "C" void app_main(void)
         1);
 
     // Start SNTP.
-    sntp_init();
+    vStartNtpTask(&xNtpTask, &xNtpOutputQueue, i2cSemaphore);
 
     // Init button watcher task.
     button_event_t ev;
@@ -104,7 +108,7 @@ extern "C" void app_main(void)
             }
         }
 
-        AlsDataMessage alsDataMessage = {0};
+        AlsDataMessage alsDataMessage = {};
         if (xQueueReceive(xAlsOutputQueue, &alsDataMessage, (TickType_t)0))
         {
             ESP_LOGD(TAG, "Got %f lux from ALS. Sending it to display.", alsDataMessage.lux);
@@ -112,6 +116,37 @@ extern "C" void app_main(void)
             displayCommandMessage.command = DisplayCommand::SET_BRIGHTNESS;
             memcpy((void *)displayCommandMessage.payload, (void *)&alsDataMessage.lux, sizeof(float));
             xQueueSend(xDisplayTaskQueue, &displayCommandMessage, (TickType_t)0);
+        }
+
+        NtpMessage ntpMessage = {};
+        while (uxQueueMessagesWaiting(xNtpOutputQueue) != 0)
+        {
+            xQueueReceive(xNtpOutputQueue, &ntpMessage, (TickType_t)0);
+            switch (ntpMessage.event)
+            {
+            case NtpEvent::SYNC_HAPPENED:
+            {
+                ESP_LOGI(TAG, "NtpEvent::SYNC_HAPPENED received.");
+                DisplayCommandMessage displayCommandMessage = {};
+                displayCommandMessage.command = DisplayCommand::SET_BLINK_COLONS;
+                displayCommandMessage.payload[0] = (uint8_t) true;
+                xQueueSend(xDisplayTaskQueue, &displayCommandMessage, (TickType_t)0);
+            }
+            break;
+            case NtpEvent::SYNC_TIMEOUT:
+            {
+                ESP_LOGI(TAG, "NtpEvent::SYNC_TIMEOUT received.");
+                DisplayCommandMessage displayCommandMessage = {};
+                displayCommandMessage.command = DisplayCommand::SET_BLINK_COLONS;
+                displayCommandMessage.payload[0] = (uint8_t) false;
+                xQueueSend(xDisplayTaskQueue, &displayCommandMessage, (TickType_t)0);
+            }
+            break;
+            default:
+                ESP_LOGE(TAG, "Received unimplemented NTP event: %d .", (uint8_t)ntpMessage.event);
+                abort();
+                break;
+            }
         }
 
         vTaskDelay(pdMS_TO_TICKS(MAIN_LOOP_DELAY_MS));
