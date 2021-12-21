@@ -5,10 +5,7 @@
 #include <esp_sntp.h>
 
 #include "ntp.h"
-#include "display.h"
 #include "rtc.h"
-#include "als.h"
-#include "display_task.h"
 
 #define MAIN_LOOP_DELAY_INTERVAL_MS 128L
 #define DISPLAY_UPDATE_INTERVAL_MS 32L
@@ -25,7 +22,7 @@ enum SyncSource
     ntp
 };
 
-void arduinoSetup();
+void arduinoSetup(SemaphoreHandle_t i2cSemaphore);
 void arduinoLoop();
 
 SyncSource getLastSyncSource();

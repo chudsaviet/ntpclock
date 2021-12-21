@@ -104,6 +104,7 @@ void init_hostname()
     memcpy((void *)&hostname, &HOSTNAME_TEMPLATE, sizeof HOSTNAME_TEMPLATE);
     for (uint8_t i = 0; i < HOSTNAME_SUFFIX_LENGTH_CHARS / 2; i++)
     {
+        // Each id byte will be converted to two characters in hex.
         sprintf(
             (char *)&hostname + sizeof HOSTNAME_TEMPLATE - HOSTNAME_SUFFIX_LENGTH_CHARS + i * 2 - 1,
             "%02X",

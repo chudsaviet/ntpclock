@@ -8,34 +8,20 @@ uint32_t previousMillis = 0;
 uint32_t lastRTCSync = 0;
 volatile SyncSource lastSyncSource = SyncSource::none;
 
-SemaphoreHandle_t i2cSemaphore = NULL;
-TaskHandle_t xDisplayTaskHandle = NULL;
+SemaphoreHandle_t i2cSemaphoreArduinoMain = NULL;
 
 SyncSource getLastSyncSource()
 {
   return lastSyncSource;
 }
 
-void adjustBrightness()
+void arduinoSetup(SemaphoreHandle_t i2cSemaphoreParameter)
 {
-  float lux = alsGetLux(i2cSemaphore);
-  ESP_LOGI(TAG, "ALS lux: %f", lux);
-
-  float k = lux / MAX_LUX;
-  currentBrightness = min(MAX_BRIGHTNESS,
-                          MIN_BRIGNTNESS +
-                              static_cast<uint8_t>(
-                                  static_cast<float>(MAX_BRIGHTNESS - MIN_BRIGNTNESS) * k));
-}
-
-void arduinoSetup()
-{
-  i2cSemaphore = xSemaphoreCreateBinary();
-  xSemaphoreGive(i2cSemaphore);
+  i2cSemaphoreArduinoMain = i2cSemaphoreParameter;
 
   tzBegin();
 
-  if (!beginRTC(i2cSemaphore))
+  if (!beginRTC(i2cSemaphoreArduinoMain))
   {
     ESP_LOGI(TAG, "Couldn't find RTC");
     abort();
@@ -43,18 +29,9 @@ void arduinoSetup()
 
   // Do RTC sync before display and WiFi start to display time earlier.
   ESP_LOGI(TAG, "Performing early RTC sync.");
-  rtcSync(i2cSemaphore);
+  rtcSync(i2cSemaphoreArduinoMain);
 
-  xTaskCreatePinnedToCore(
-      vDisplayTask,
-      "Display",
-      configMINIMAL_STACK_SIZE * 2,
-      &i2cSemaphore,
-      tskIDLE_PRIORITY,
-      &xDisplayTaskHandle,
-      1);
-
-  ntpBegin(i2cSemaphore);
+  ntpBegin(i2cSemaphoreArduinoMain);
 }
 
 void arduinoLoop()
@@ -70,7 +47,7 @@ void arduinoLoop()
   {
     if (currentMillis - lastRTCSync > RTC_SYNC_INTERVAL_MS)
     {
-      rtcSync(i2cSemaphore);
+      rtcSync(i2cSemaphoreArduinoMain);
       lastRTCSync = currentMillis;
       lastSyncSource = SyncSource::rtc;
     }

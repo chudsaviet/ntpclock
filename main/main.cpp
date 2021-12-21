@@ -13,16 +13,24 @@
 #include "filesystem.h"
 #include "unique_id.h"
 #include "wpa_key_gen.h"
+#include "display.h"
+#include "als.h"
 
 #include "secrets.h"
 
 #define SET_BUTTON_GPIO 0
-#define BUTTON_QUEUE_TIMEOUT_MS 200
+#define MAIN_LOOP_DELAY_MS 500
 
 static const char *TAG = "main.cpp";
 
 TaskHandle_t xArduinoTaskHandle = NULL;
 TaskHandle_t xWifiControlTaskHandle = NULL;
+
+TaskHandle_t xDisplayTask = NULL;
+QueueHandle_t xDisplayTaskQueue = 0;
+
+TaskHandle_t xAlsTask = NULL;
+QueueHandle_t xAlsOutputQueue = 0;
 
 extern "C" void app_main(void)
 {
@@ -32,9 +40,13 @@ extern "C" void app_main(void)
     // Init filesystem.
     filesystem_init();
 
+    // Create I2C semaphore.
+    SemaphoreHandle_t i2cSemaphore = xSemaphoreCreateBinary();
+    xSemaphoreGive(i2cSemaphore);
+
     // Start Arduino task.
     initArduino();
-    arduinoSetup();
+    arduinoSetup(i2cSemaphore);
     xTaskCreatePinnedToCore(
         vArduinoTask,
         "Arduino loop",
@@ -44,8 +56,16 @@ extern "C" void app_main(void)
         &xArduinoTaskHandle,
         1);
 
+    // Start displaying task.
+    ESP_LOGI(TAG, "Starting display task.");
+    vStartDisplayTask(&xDisplayTask, &xDisplayTaskQueue, i2cSemaphore);
+
+    // Start ALS tast.
+    ESP_LOGI(TAG, "Starting ALS task.");
+    vStartAlsTask(&xAlsTask, &xAlsOutputQueue, i2cSemaphore);
+
     //Initialize NVS (Non-Volatile Storage, flash).
-    ESP_LOGI(TAG, "Initializing NVS");
+    ESP_LOGI(TAG, "Initializing NVS.");
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
     {
@@ -55,7 +75,6 @@ extern "C" void app_main(void)
     ESP_ERROR_CHECK(ret);
 
     // Starting WiFi control task.
-
     xTaskCreatePinnedToCore(
         vWifiControlTask,
         "WiFi control",
@@ -75,7 +94,7 @@ extern "C" void app_main(void)
     // Work indefinitely.
     for (;;)
     {
-        if (xQueueReceive(button_events, &ev, pdMS_TO_TICKS(BUTTON_QUEUE_TIMEOUT_MS)))
+        if (xQueueReceive(button_events, &ev, (TickType_t)0))
         {
             if ((ev.pin == SET_BUTTON_GPIO) && (ev.event == BUTTON_UP))
             {
@@ -84,5 +103,17 @@ extern "C" void app_main(void)
                 ESP_LOGI(TAG, "Generated WPA key: %s", (char *)&wpa_key);
             }
         }
+
+        AlsDataMessage alsDataMessage = {0};
+        if (xQueueReceive(xAlsOutputQueue, &alsDataMessage, (TickType_t)0))
+        {
+            ESP_LOGD(TAG, "Got %f lux from ALS. Sending it to display.", alsDataMessage.lux);
+            DisplayCommandMessage displayCommandMessage = {};
+            displayCommandMessage.command = DisplayCommand::SET_BRIGHTNESS;
+            memcpy((void *)displayCommandMessage.payload, (void *)&alsDataMessage.lux, sizeof(float));
+            xQueueSend(xDisplayTaskQueue, &displayCommandMessage, (TickType_t)0);
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(MAIN_LOOP_DELAY_MS));
     }
 }

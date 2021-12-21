@@ -1,7 +1,14 @@
-#include <Arduino.h>
-#include <Adafruit_VEML7700.h>
+#pragma once
 
-#define ALS_SEMAPHORE_TIMEOUT_MS 128
+#include <stdint.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <freertos/queue.h>
+#include <freertos/semphr.h>
 
-void alsBegin(SemaphoreHandle_t i2cSemaphore);
-float alsGetLux(SemaphoreHandle_t i2cSemaphore);
+struct AlsDataMessage
+{
+    float lux;
+};
+
+void vStartAlsTask(TaskHandle_t *taskHandle, QueueHandle_t *outputQueueHandle, SemaphoreHandle_t i2cSemaphore);

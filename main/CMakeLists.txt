@@ -3,7 +3,6 @@ idf_component_register(SRCS
     "als.cpp"
     "arduino_main.cpp"
     "arduino_task.cpp"
-    "display_task.cpp"
     "display.cpp"
     "filesystem.cpp"
     "main.cpp"

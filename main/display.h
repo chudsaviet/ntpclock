@@ -1,21 +1,22 @@
 #pragma once
 
-#include <Arduino.h>
-#include <TimeLib.h>
+#include <stdint.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <freertos/queue.h>
+#include <freertos/semphr.h>
 
-// Can't simply include `time.h` because of conflict with Arduino's `time.h`.
-// `esp_sntp.h` seems to include the right one.
-#include <esp_sntp.h>
+#define DISPLAY_PAYLOAD_SIZE_BYTES 32
 
-// Otherwise `Adafruit LEDBackpack` -> `Adafruit GFX` fails to build.
-#include <Adafruit_I2CDevice.h>
-#include <Adafruit_LEDBackpack.h>
+enum DisplayCommand
+{
+    SET_BRIGHTNESS
+};
 
-#include "tz_info_local.h"
+struct DisplayCommandMessage
+{
+    DisplayCommand command;
+    uint8_t payload[DISPLAY_PAYLOAD_SIZE_BYTES];
+};
 
-#define DISPLAY_BEGIN_SEMAPHORE_TIMEOUT_MS 2048
-#define DISPLAY_UPDATE_SEMAPHORE_TIMEOUT_MS 512
-
-void displayBegin(SemaphoreHandle_t i2cSemaphore);
-void display(time_t time, bool flickColons, uint8_t brightness);
-void displayUpdate(uint8_t currentBrightness, bool flickColons, SemaphoreHandle_t i2cSemaphore);
+void vStartDisplayTask(TaskHandle_t *task_handle, QueueHandle_t *queue_handle, SemaphoreHandle_t i2cSemaphore);
