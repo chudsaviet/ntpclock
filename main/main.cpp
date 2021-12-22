@@ -7,8 +7,6 @@
 
 #include <button.h>
 
-#include "arduino_main.h"
-#include "arduino_task.h"
 #include "wifi_control.h"
 #include "filesystem.h"
 #include "unique_id.h"
@@ -16,6 +14,8 @@
 #include "display.h"
 #include "als.h"
 #include "ntp.h"
+#include "rtc.h"
+#include "tz_info_local.h"
 
 #include "secrets.h"
 
@@ -24,7 +24,8 @@
 
 static const char *TAG = "main.cpp";
 
-static TaskHandle_t xArduinoTaskHandle = NULL;
+static QueueHandle_t xButtonEventQueue = 0;
+
 static TaskHandle_t xWifiControlTaskHandle = NULL;
 
 static TaskHandle_t xDisplayTask = NULL;
@@ -36,7 +37,10 @@ static QueueHandle_t xAlsOutputQueue = 0;
 static TaskHandle_t xNtpTask = NULL;
 static QueueHandle_t xNtpOutputQueue = 0;
 
-extern "C" void app_main(void)
+static TaskHandle_t xRtcTask = NULL;
+static QueueHandle_t xRtcCommandQueue = 0;
+
+void setup()
 {
     // Init unique ID.
     init_unique_id();
@@ -48,17 +52,17 @@ extern "C" void app_main(void)
     SemaphoreHandle_t i2cSemaphore = xSemaphoreCreateBinary();
     xSemaphoreGive(i2cSemaphore);
 
-    // Start Arduino task.
+    // Initialize TZ conversion library.
+    tzBegin();
+
+    // Initialize Arduino environment.
     initArduino();
-    arduinoSetup(i2cSemaphore);
-    xTaskCreatePinnedToCore(
-        vArduinoTask,
-        "Arduino loop",
-        configMINIMAL_STACK_SIZE * 2,
-        NULL,
-        tskIDLE_PRIORITY,
-        &xArduinoTaskHandle,
-        1);
+
+    // Start RTC task and do immediate sync.
+    vStartRtcTask(&xRtcTask, &xRtcCommandQueue, i2cSemaphore);
+    RtcMessage rtcMessage = {};
+    rtcMessage.command = RtcCommand::DO_SYSTEM_CLOCK_SYNC;
+    xQueueSend(xRtcCommandQueue, &rtcMessage, (TickType_t)0);
 
     // Start displaying task.
     ESP_LOGI(TAG, "Starting display task.");
@@ -92,19 +96,24 @@ extern "C" void app_main(void)
     vStartNtpTask(&xNtpTask, &xNtpOutputQueue, i2cSemaphore);
 
     // Init button watcher task.
-    button_event_t ev;
-    QueueHandle_t button_events = button_init(PIN_BIT(SET_BUTTON_GPIO));
+    xButtonEventQueue = button_init(PIN_BIT(SET_BUTTON_GPIO));
+}
 
-    // Work indefinitely.
+void loopIndefinitely()
+{
     for (;;)
     {
-        if (xQueueReceive(button_events, &ev, (TickType_t)0))
+        button_event_t buttonEvent;
+        while (uxQueueMessagesWaiting(xButtonEventQueue) > 0)
         {
-            if ((ev.pin == SET_BUTTON_GPIO) && (ev.event == BUTTON_UP))
+            if (xQueueReceive(xButtonEventQueue, &buttonEvent, (TickType_t)0))
             {
-                char wpa_key[WPA_KEY_LENGTH_CHARS + 1] = {0};
-                generate_wpa_key((char *)&wpa_key);
-                ESP_LOGI(TAG, "Generated WPA key: %s", (char *)&wpa_key);
+                if ((buttonEvent.pin == SET_BUTTON_GPIO) && (buttonEvent.event == BUTTON_UP))
+                {
+                    char wpa_key[WPA_KEY_LENGTH_CHARS + 1] = {0};
+                    generate_wpa_key((char *)&wpa_key);
+                    ESP_LOGI(TAG, "Generated WPA key: %s", (char *)&wpa_key);
+                }
             }
         }
 
@@ -127,6 +136,12 @@ extern "C" void app_main(void)
             case NtpEvent::SYNC_HAPPENED:
             {
                 ESP_LOGI(TAG, "NtpEvent::SYNC_HAPPENED received.");
+
+                RtcMessage rtcMessage = {};
+                rtcMessage.command = RtcCommand::SET_RTC_AUTO_SYSTEM_CLOCK_SYNC;
+                rtcMessage.payload[0] = (uint8_t) false;
+                xQueueSend(xRtcCommandQueue, &rtcMessage, (TickType_t)0);
+
                 DisplayCommandMessage displayCommandMessage = {};
                 displayCommandMessage.command = DisplayCommand::SET_BLINK_COLONS;
                 displayCommandMessage.payload[0] = (uint8_t) true;
@@ -136,6 +151,12 @@ extern "C" void app_main(void)
             case NtpEvent::SYNC_TIMEOUT:
             {
                 ESP_LOGI(TAG, "NtpEvent::SYNC_TIMEOUT received.");
+
+                RtcMessage rtcMessage = {};
+                rtcMessage.command = RtcCommand::SET_RTC_AUTO_SYSTEM_CLOCK_SYNC;
+                rtcMessage.payload[0] = (uint8_t) true;
+                xQueueSend(xRtcCommandQueue, &rtcMessage, (TickType_t)0);
+
                 DisplayCommandMessage displayCommandMessage = {};
                 displayCommandMessage.command = DisplayCommand::SET_BLINK_COLONS;
                 displayCommandMessage.payload[0] = (uint8_t) false;
@@ -151,4 +172,13 @@ extern "C" void app_main(void)
 
         vTaskDelay(pdMS_TO_TICKS(MAIN_LOOP_DELAY_MS));
     }
+}
+
+extern "C" void app_main(void)
+{
+    setup();
+    loopIndefinitely();
+
+    ESP_LOGE(TAG, "Shall never reach end of app_main().");
+    abort();
 }

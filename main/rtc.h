@@ -1,23 +1,23 @@
 #pragma once
 
-#include <time.h>
-#include <Arduino.h>
-#include <RTClib.h>
-
 // Can't simply include `time.h` because of conflict with Arduino's `time.h`.
 // `esp_sntp.h` seems to include the right one that have `timeval` defined.
 #include <esp_sntp.h>
 
-#include "tz_info_local.h"
+#define RTC_MESSAGE_PAYLOAD_SIZE_BYTES 1
 
-#define BEGIN_RTC_SEMAPHORE_TIMEOUT_MS 2048L
+enum RtcCommand
+{
+    SET_RTC_AUTO_SYSTEM_CLOCK_SYNC,
+    DO_SYSTEM_CLOCK_SYNC,
+};
 
-#define ACCESS_RTC_SEMAPHORE_TIMEOUT_MS 128L
+struct RtcMessage
+{
+    RtcCommand command;
+    uint8_t payload[RTC_MESSAGE_PAYLOAD_SIZE_BYTES];
+};
 
-bool beginRTC(SemaphoreHandle_t i2cSemaphore);
+void vStartRtcTask(TaskHandle_t *taskHandle, QueueHandle_t *outputQueue, SemaphoreHandle_t i2cSemaphoreParameter);
 
-timeval getRTC(SemaphoreHandle_t i2cSemaphore);
-
-void rtcSync(SemaphoreHandle_t i2cSemaphore);
-
-void setRTC(timeval time, SemaphoreHandle_t i2cSemaphore);
+void setRTC(timeval time, SemaphoreHandle_t i2cSemaphoreParameter);

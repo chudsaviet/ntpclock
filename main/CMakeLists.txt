@@ -1,8 +1,6 @@
 idf_component_register(SRCS
     "abort.cpp"
     "als.cpp"
-    "arduino_main.cpp"
-    "arduino_task.cpp"
     "display.cpp"
     "filesystem.cpp"
     "main.cpp"
