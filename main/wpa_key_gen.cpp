@@ -15,7 +15,7 @@ const uint8_t ap_key_salt[] = {0x81, 0xfc, 0x72, 0x37, 0x22, 0xe6, 0x6d, 0x86, 0
 // The alphabet we can show on a 7-segment display.
 const char alphabet[] = {
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-    'a', 'B', 'C', 'd', 'E', 'F'};
+    'b', 'C', 'd', 'E', 'F', 'o'};
 
 #define SHA1_SIZE_BYTES 20
 

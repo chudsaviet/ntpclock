@@ -1,5 +1,7 @@
 #include "display.h"
 
+#define TAG "display.cpp"
+
 #include <Arduino.h>
 #include <TimeLib.h>
 
@@ -24,13 +26,23 @@
 #define DISPLAY_MAX_BRIGHTNESS 16L
 #define DISPLAY_MIN_BRIGNTNESS 0L
 #define DISPLAY_MAX_LUX 500.0F
+#define DISPLAY_CHARS 4
 
-Adafruit_7segment clockDisplay = Adafruit_7segment();
+enum DisplayShowMode
+{
+    TIME,
+    TEXT
+};
 
+static Adafruit_7segment clockDisplay = Adafruit_7segment();
 static bool blinkColons = false;
 static SemaphoreHandle_t i2cSemaphore = 0;
 static QueueHandle_t xCommandQueue = 0;
 static float currentBrightness = 0.0;
+static DisplayShowMode currentMode = DisplayShowMode::TIME;
+static char *currentText = NULL;
+static size_t currentTextLength = 0;
+static int64_t textShowStartTimestamp = 0;
 
 void displayBegin()
 {
@@ -45,22 +57,7 @@ void displayBegin()
     }
 }
 
-void display(time_t time)
-{
-    clockDisplay.setBrightness(currentBrightness);
-    clockDisplay.print(hour(time) * 100 + minute(time), DEC);
-    if (blinkColons)
-    {
-        clockDisplay.drawColon(second(time) % 2 == 0);
-    }
-    else
-    {
-        clockDisplay.drawColon(true);
-    }
-    clockDisplay.writeDisplay();
-}
-
-void displayUpdate()
+void vDisplayTime()
 {
     timeval currentTime;
     gettimeofday(&currentTime, NULL);
@@ -68,12 +65,68 @@ void displayUpdate()
 
     if (xSemaphoreTake(i2cSemaphore, pdMS_TO_TICKS(DISPLAY_UPDATE_SEMAPHORE_TIMEOUT_MS)) == pdPASS)
     {
-        display(currentTime.tv_sec);
+        clockDisplay.clear();
+        clockDisplay.setBrightness(currentBrightness);
+        clockDisplay.print(hour(currentTime.tv_sec) * 100 + minute(currentTime.tv_sec), DEC);
+        if (blinkColons)
+        {
+            clockDisplay.drawColon(second(currentTime.tv_sec) % 2 == 0);
+        }
+        else
+        {
+            clockDisplay.drawColon(true);
+        }
+        clockDisplay.writeDisplay();
+
         xSemaphoreGive(i2cSemaphore);
     }
     else
     {
         Serial.println("displayUpdate: couldn't take i2c semaphore.");
+    }
+}
+
+void vDisplayText()
+{
+    char finalText[DISPLAY_CHARS] = {0};
+
+    if (currentTextLength <= DISPLAY_CHARS)
+    {
+
+        strncpy((char *)&finalText, currentText, currentTextLength);
+    }
+    else
+    {
+        uint8_t textShift = ((esp_timer_get_time() - textShowStartTimestamp) / 1000000) % currentTextLength;
+        size_t tailLen = currentTextLength - textShift;
+        ESP_LOGD(TAG, "vDisplayText() textShift: %d tailLen: %d", textShift, tailLen);
+        if (tailLen < DISPLAY_CHARS)
+        {
+            memcpy(&finalText, currentText + textShift, tailLen);
+            memcpy((char *)&finalText + tailLen, currentText, DISPLAY_CHARS - tailLen);
+        }
+        else
+        {
+            memcpy(&finalText, currentText + textShift, DISPLAY_CHARS);
+        }
+    }
+
+    if (xSemaphoreTake(i2cSemaphore, pdMS_TO_TICKS(DISPLAY_UPDATE_SEMAPHORE_TIMEOUT_MS)) == pdPASS)
+    {
+        clockDisplay.println();
+        clockDisplay.drawColon(false);
+        clockDisplay.setBrightness(currentBrightness);
+        for (uint8_t i = 0; i < DISPLAY_CHARS; i++)
+        {
+            clockDisplay.write(finalText[i]);
+        }
+
+        clockDisplay.writeDisplay();
+        xSemaphoreGive(i2cSemaphore);
+    }
+    else
+    {
+        Serial.println("vDisplayText(): couldn't take i2c semaphore.");
     }
 }
 
@@ -111,12 +164,44 @@ void vDisplayTask(void *pvParameters)
                 blinkColons = (message.payload[0] > 0);
             }
             break;
+            case DisplayCommand::SET_SHOW_TIME:
+            {
+                currentMode = DisplayShowMode::TIME;
+            }
+            break;
+            case DisplayCommand::SET_SHOW_TEXT:
+            {
+                currentMode = DisplayShowMode::TEXT;
+                currentTextLength = strlen((char *)&message.payload);
+                currentText = (char *)malloc(currentTextLength + 2);
+                strncpy(currentText, (char *)&message.payload, currentTextLength + 1);
+                currentText[currentTextLength] = ' ';
+                currentText[currentTextLength + 1] = 0;
+                currentTextLength += 1;
+                textShowStartTimestamp = esp_timer_get_time();
+                ESP_LOGI(TAG, "Will show: '%s'", currentText);
+            }
+            break;
             default:
+                ESP_LOGE(TAG, "Unknown DisplayCommand received: %d", (uint8_t)message.command);
+                abort();
                 break;
             }
         }
 
-        displayUpdate();
+        switch (currentMode)
+        {
+        case DisplayShowMode::TIME:
+            vDisplayTime();
+            break;
+        case DisplayShowMode::TEXT:
+            vDisplayText();
+            break;
+        default:
+            ESP_LOGE(TAG, "Unknown DisplayShowMode received: %d", (uint8_t)currentMode);
+            abort();
+            break;
+        }
 
         vTaskDelay(pdMS_TO_TICKS(DISPLAY_LOOP_DELAY_MS));
     }

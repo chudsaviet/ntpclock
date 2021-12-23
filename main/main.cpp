@@ -113,6 +113,12 @@ void loopIndefinitely()
                     char wpa_key[WPA_KEY_LENGTH_CHARS + 1] = {0};
                     generate_wpa_key((char *)&wpa_key);
                     ESP_LOGI(TAG, "Generated WPA key: %s", (char *)&wpa_key);
+
+                    ESP_LOGI(TAG, "Sending WPA key to display.");
+                    DisplayCommandMessage displayCommandMessage = {};
+                    displayCommandMessage.command = DisplayCommand::SET_SHOW_TEXT;
+                    memcpy(displayCommandMessage.payload, &wpa_key, WPA_KEY_LENGTH_CHARS + 1);
+                    xQueueSend(xDisplayTaskQueue, &displayCommandMessage, (TickType_t)0);
                 }
             }
         }
