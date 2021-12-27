@@ -3,6 +3,7 @@
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/queue.h"
 #include "freertos/event_groups.h"
 #include "esp_system.h"
 #include "esp_wifi.h"
@@ -26,9 +27,15 @@ static EventGroupHandle_t s_wifi_event_group = NULL;
 
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT BIT1
-
 #define WIFI_CONTROL_TASK_LOOP_DELAY_MS 4000
 #define WIFI_RESTART_TIMEOUT_SEC 900 // 15 min
+#define WIFI_SHORTTERM_MAX_RETRY_COUNT 7
+#define WIFI_COMMAND_QUEUE_SIZE 4
+#define WIFI_CONTROL_TASK_CORE 1
+#define WIFI_AP_CHANNEL 6
+#define WIFI_AP_MAX_CONNECTIONS 4
+#define WIFI_AP_AUTH_MODE WIFI_AUTH_WPA2_PSK
+#define WPA_PASSWORD_MAX_LENGTH_CHARS 64
 
 #define HOSTNAME_TEMPLATE "ntpclock-XXXXXXXX"
 #define HOSTNAME_SUFFIX_LENGTH_CHARS 8
@@ -36,12 +43,18 @@ static EventGroupHandle_t s_wifi_event_group = NULL;
 static const char *TAG = "wifi_control.cpp";
 static char hostname[sizeof HOSTNAME_TEMPLATE + 1] = {0};
 
+static char wpaPassword[WPA_PASSWORD_MAX_LENGTH_CHARS] = {0};
+static size_t wpaPasswordLength = 0;
+
 static int s_retry_num = 0;
 static timeval s_wifi_fail_timestamp = {0, 0};
 static volatile bool s_wifi_failed = false;
 static esp_netif_t *s_sta_netif = NULL;
+static esp_netif_t *s_ap_netif = NULL;
 static esp_event_handler_instance_t s_instance_any_id = NULL;
 static esp_event_handler_instance_t s_instance_got_ip = NULL;
+
+static QueueHandle_t xCommandQueue = 0;
 
 static void event_handler(void *arg, esp_event_base_t event_base,
                           int32_t event_id, void *event_data)
@@ -158,6 +171,31 @@ void wifi_restart()
     wifi_bits_wait();
 }
 
+void vSwitchToApMode()
+{
+    // Stop STA mode.
+    ESP_ERROR_CHECK(esp_wifi_stop());
+    esp_netif_destroy(s_sta_netif);
+
+    s_ap_netif = esp_netif_create_default_wifi_ap();
+
+    // SSID will be equal to the hostname
+    wifi_config_t wifi_config = {0};
+    wifi_config.ap.channel = WIFI_AP_CHANNEL;
+    wifi_config.ap.max_connection = WIFI_AP_MAX_CONNECTIONS;
+    wifi_config.ap.authmode = WIFI_AP_AUTH_MODE;
+    wifi_config.ap.ssid_len = sizeof hostname;
+    memcpy(&wifi_config.ap.ssid, &hostname, sizeof hostname);
+    memcpy(&wifi_config.ap.password, &wpaPassword, wpaPasswordLength);
+
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));
+    ESP_ERROR_CHECK(esp_wifi_start());
+
+    ESP_LOGI(TAG, "Switching to WiFi AP mode finished. SSID: '%s', channel: %d.",
+             (char *)&wifi_config.ap.ssid, wifi_config.ap.channel);
+}
+
 void vWifiControlTask(void *pvParameters)
 {
     init_hostname();
@@ -173,6 +211,29 @@ void vWifiControlTask(void *pvParameters)
 
     for (;;)
     {
+
+        while (uxQueueMessagesWaiting(xCommandQueue) != 0)
+        {
+            WifiCommandMessage message = {};
+            xQueueReceive(xCommandQueue, &message, (TickType_t)0);
+            switch (message.command)
+            {
+            case WifiCommand::SWITCH_TO_AP_MODE:
+            {
+                wpaPasswordLength = strlen((char *)&message.payload);
+                memcpy(&wpaPassword, &message.payload, wpaPasswordLength + 1);
+
+                ESP_LOGI(TAG, "Switching to WiFi AP mode.");
+                vSwitchToApMode();
+            }
+            break;
+            default:
+                ESP_LOGE(TAG, "Unknown DisplayCommand received: %d", (uint8_t)message.command);
+                abort();
+                break;
+            }
+        }
+
         timeval current_timestamp = {0, 0};
         gettimeofday(&current_timestamp, NULL);
 
@@ -187,4 +248,19 @@ void vWifiControlTask(void *pvParameters)
         vTaskDelay(pdMS_TO_TICKS(WIFI_CONTROL_TASK_LOOP_DELAY_MS));
     }
     vTaskDelete(NULL);
+}
+
+void vStartWifiTask(TaskHandle_t *taskHandle, QueueHandle_t *queueHandle)
+{
+    xCommandQueue = xQueueCreate(WIFI_COMMAND_QUEUE_SIZE, sizeof(WifiCommandMessage));
+    *queueHandle = xCommandQueue;
+
+    xTaskCreatePinnedToCore(
+        vWifiControlTask,
+        "WiFi control",
+        configMINIMAL_STACK_SIZE * 4,
+        NULL,
+        tskIDLE_PRIORITY,
+        taskHandle,
+        WIFI_CONTROL_TASK_CORE);
 }

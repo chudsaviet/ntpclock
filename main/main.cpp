@@ -40,6 +40,9 @@ static QueueHandle_t xNtpOutputQueue = 0;
 static TaskHandle_t xRtcTask = NULL;
 static QueueHandle_t xRtcCommandQueue = 0;
 
+static TaskHandle_t xWifiTask = NULL;
+static QueueHandle_t xWifiCommandQueue = 0;
+
 void setup()
 {
     // Init unique ID.
@@ -64,15 +67,12 @@ void setup()
     rtcMessage.command = RtcCommand::DO_SYSTEM_CLOCK_SYNC;
     xQueueSend(xRtcCommandQueue, &rtcMessage, (TickType_t)0);
 
-    // Start displaying task.
     ESP_LOGI(TAG, "Starting display task.");
     vStartDisplayTask(&xDisplayTask, &xDisplayTaskQueue, i2cSemaphore);
 
-    // Start ALS tast.
     ESP_LOGI(TAG, "Starting ALS task.");
     vStartAlsTask(&xAlsTask, &xAlsOutputQueue, i2cSemaphore);
 
-    //Initialize NVS (Non-Volatile Storage, flash).
     ESP_LOGI(TAG, "Initializing NVS.");
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
@@ -82,15 +82,8 @@ void setup()
     }
     ESP_ERROR_CHECK(ret);
 
-    // Starting WiFi control task.
-    xTaskCreatePinnedToCore(
-        vWifiControlTask,
-        "WiFi control",
-        configMINIMAL_STACK_SIZE * 4,
-        NULL,
-        tskIDLE_PRIORITY,
-        &xWifiControlTaskHandle,
-        1);
+    ESP_LOGI(TAG, "Starting WiFi control task.");
+    vStartWifiTask(&xWifiTask, &xWifiCommandQueue);
 
     // Start SNTP.
     vStartNtpTask(&xNtpTask, &xNtpOutputQueue, i2cSemaphore);
@@ -119,6 +112,12 @@ void loopIndefinitely()
                     displayCommandMessage.command = DisplayCommand::SET_SHOW_TEXT;
                     memcpy(displayCommandMessage.payload, &wpa_key, WPA_KEY_LENGTH_CHARS + 1);
                     xQueueSend(xDisplayTaskQueue, &displayCommandMessage, (TickType_t)0);
+
+                    ESP_LOGI(TAG, "Sending WPA key to WiFi control task. Switching to AP mode.");
+                    WifiCommandMessage wifiCommandMessage = {};
+                    wifiCommandMessage.command = WifiCommand::SWITCH_TO_AP_MODE;
+                    memcpy(wifiCommandMessage.payload, &wpa_key, WPA_KEY_LENGTH_CHARS + 1);
+                    xQueueSend(xWifiCommandQueue, &wifiCommandMessage, (TickType_t)0);
                 }
             }
         }
