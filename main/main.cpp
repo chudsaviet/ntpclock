@@ -16,7 +16,7 @@
 #include "ntp.h"
 #include "rtc.h"
 #include "tz_info_local.h"
-#include "webserver_control.h"
+#include "http/server_control.h"
 
 #include "secrets.h"
 
@@ -44,8 +44,8 @@ static QueueHandle_t xRtcCommandQueue = 0;
 static TaskHandle_t xWifiTask = NULL;
 static QueueHandle_t xWifiCommandQueue = 0;
 
-static TaskHandle_t xWebserverControlTask = NULL;
-static QueueHandle_t xWebserverControlQueue = 0;
+static TaskHandle_t xHttpServerControlTask = NULL;
+static QueueHandle_t xHttpServerControlQueue = 0;
 
 void setup()
 {
@@ -96,7 +96,7 @@ void setup()
     xButtonEventQueue = button_init(PIN_BIT(SET_BUTTON_GPIO));
 
     ESP_LOGI(TAG, "Starting WiFi control task.");
-    vStartWebserverTask(&xWebserverControlTask, &xWebserverControlQueue);
+    vStartHttpServerControlTask(&xHttpServerControlTask, &xHttpServerControlQueue);
 }
 
 void loopIndefinitely()
@@ -127,9 +127,9 @@ void loopIndefinitely()
                     xQueueSend(xWifiCommandQueue, &wifiCommandMessage, (TickType_t)0);
 
                     ESP_LOGI(TAG, "Starting webserver.");
-                    WebserverMessage webserverCommandMessage = {};
-                    webserverCommandMessage.command = WebserverCommand::START;
-                    xQueueSend(xWebserverControlQueue, &webserverCommandMessage, (TickType_t)0);
+                    HttpServerMessage webserverCommandMessage = {};
+                    webserverCommandMessage.command = HttpServerCommand::START;
+                    xQueueSend(xHttpServerControlQueue, &webserverCommandMessage, (TickType_t)0);
                 }
             }
         }

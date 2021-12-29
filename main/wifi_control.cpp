@@ -9,6 +9,7 @@
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "esp_log.h"
+#include "esp_err.h"
 #include "nvs_flash.h"
 
 #include "lwip/err.h"
@@ -263,4 +264,17 @@ void vStartWifiTask(TaskHandle_t *taskHandle, QueueHandle_t *queueHandle)
         tskIDLE_PRIORITY,
         taskHandle,
         WIFI_CONTROL_TASK_CORE);
+}
+
+char *xGetWifiStaSsid()
+{
+    
+    wifi_config_t wifi_config = {0};
+    ESP_ERROR_CHECK(esp_wifi_get_config(WIFI_IF_STA, &wifi_config));
+
+    size_t ssid_len = strlen((char *)&wifi_config.sta.ssid);
+    char *ssid = (char *)malloc(ssid_len + 1);
+    strcpy(ssid, (char *)&wifi_config.sta.ssid);
+
+    return ssid;
 }
