@@ -27,22 +27,18 @@ void alsBegin()
 {
     if (xSemaphoreTake(i2cSemaphore, pdMS_TO_TICKS(ALS_SEMAPHORE_TIMEOUT_MS)) == pdPASS)
     {
-        Serial.println("ALS initialization...");
-        if (!veml.begin())
-        {
-            veml.setGain(ALS_GAIN);
-            veml.setIntegrationTime(ALS_INTEGRATION_TIME);
-            Serial.println("ALS intialized.");
-        }
-        else
-        {
-            Serial.println("ALS not found.");
-        }
+        ESP_LOGI(TAG, "ALS initialization...");
+        
+        veml.begin();
+        veml.setGain(ALS_GAIN);
+        veml.setIntegrationTime(ALS_INTEGRATION_TIME);
+        
         xSemaphoreGive(i2cSemaphore);
     }
     else
     {
-        Serial.println("alsBegin: couldn't take i2c semaphore. Not initializing.");
+        ESP_LOGE(TAG, "alsBegin: couldn't take i2c semaphore. Not initializing.");
+        abort();
     }
 }
 

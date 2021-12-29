@@ -137,7 +137,7 @@ void loopIndefinitely()
         AlsDataMessage alsDataMessage = {};
         if (xQueueReceive(xAlsOutputQueue, &alsDataMessage, (TickType_t)0))
         {
-            ESP_LOGD(TAG, "Got %f lux from ALS. Sending it to display.", alsDataMessage.lux);
+            ESP_LOGV(TAG, "Got %f lux from ALS. Sending it to display.", alsDataMessage.lux);
             DisplayCommandMessage displayCommandMessage = {};
             displayCommandMessage.command = DisplayCommand::SET_BRIGHTNESS;
             memcpy((void *)displayCommandMessage.payload, (void *)&alsDataMessage.lux, sizeof(float));

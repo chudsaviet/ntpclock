@@ -99,7 +99,7 @@ void vDisplayText()
     {
         uint8_t textShift = ((esp_timer_get_time() - textShowStartTimestamp) / 1000000) % currentTextLength;
         size_t tailLen = currentTextLength - textShift;
-        ESP_LOGD(TAG, "vDisplayText() textShift: %d tailLen: %d", textShift, tailLen);
+        ESP_LOGV(TAG, "vDisplayText() textShift: %d tailLen: %d", textShift, tailLen);
         if (tailLen < DISPLAY_CHARS)
         {
             memcpy(&finalText, currentText + textShift, tailLen);
