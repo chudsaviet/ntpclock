@@ -13,6 +13,7 @@ idf_component_register(SRCS
     "nvs_local.cpp"
     "http/server_control.cpp"
     "http/api_handlers.cpp"
+    "http/file_server.cpp"
 INCLUDE_DIRS "."
 )
 

@@ -1,6 +1,10 @@
 #include "filesystem.h"
 
+#include "abort.h"
+
 static const char *TAG = "filesystem.cpp";
+
+#define SPIFFS_MAX_FILES 64
 
 void filesystem_init()
 {
@@ -9,8 +13,8 @@ void filesystem_init()
     esp_vfs_spiffs_conf_t conf = {
         .base_path = "/spiffs",
         .partition_label = NULL,
-        .max_files = 16,
-        .format_if_mount_failed = true};
+        .max_files = SPIFFS_MAX_FILES,
+        .format_if_mount_failed = false};
 
     esp_err_t ret = esp_vfs_spiffs_register(&conf);
     if (ret != ESP_OK)
@@ -27,8 +31,7 @@ void filesystem_init()
         {
             ESP_LOGE(TAG, "Failed to initialize SPIFFS (%s).", esp_err_to_name(ret));
         }
-        vTaskDelay(pdMS_TO_TICKS(10000));
-        abort();
+        delayed_abort();
     }
 
     size_t total = 0, used = 0;
@@ -39,6 +42,6 @@ void filesystem_init()
     }
     else
     {
-        ESP_LOGI(TAG, "Partition size: total: %d KiB, used: %d KiB.", total / 1024, used / 1024);
+        ESP_LOGI(TAG, "Partition size: total: %d bytes, used: %d bytes.", total, used);
     }
 }

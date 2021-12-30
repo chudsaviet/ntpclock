@@ -2,13 +2,13 @@
 
 #include <stdio.h>
 #include <cJSON.h>
+#include <esp_err.h>
+#include <esp_log.h>
 
 #include "../wifi_control.h"
 
 #define WIFI_SSID_MAX_SIZE_CHARS 32
 #define HTTP_PUT_MAX_CONTENT_SIZE_BYTES 4096
-
-#define MIN(a, b) ((a) < (b)) ? (a) : (b)))
 
 static const char *TAG = "http/request_handler.cpp";
 

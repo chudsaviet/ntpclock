@@ -1,7 +1,3 @@
-/*
-    HTTP server code based on
-    https://github.com/espressif/esp-idf/blob/master/examples/protocols/http_server/file_serving/main/file_server.c
-*/
 #include "server_control.h"
 
 #include <stdio.h>
@@ -16,6 +12,9 @@
 #include "esp_http_server.h"
 
 #include "api_handlers.h"
+#include "file_server.h"
+
+#include "abort.h"
 
 #define HTTP_SERVER_CONTROL_LOOP_DELAY_MS 1000
 #define HTTP_SERVER_CONTROL_TASK_CORE 1
@@ -40,6 +39,7 @@ void start_http_server()
     }
 
     register_api_handlers(server);
+    register_file_server_handlers(server);
 }
 
 void vHttpServerControlTask(void *pvParameters)
