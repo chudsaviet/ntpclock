@@ -10,6 +10,7 @@ idf_component_register(SRCS
     "unique_id.cpp"
     "wifi_control.cpp"
     "wpa_key_gen.cpp"
+    "nvs_local.cpp"
     "http/server_control.cpp"
     "http/api_handlers.cpp"
 INCLUDE_DIRS "."

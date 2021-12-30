@@ -7,7 +7,6 @@
 #define MAC_ADDRESS_SIZE_BYTES 8
 
 #define UNIQUE_ID_NVS_KEY "unique_id"
-#define UNIQUE_ID_NVS_NAMESPACE "device_settings"
 
 void init_unique_id();
 

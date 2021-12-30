@@ -7,6 +7,7 @@
 #include <sha/sha_parallel_engine.h>
 
 #include "abort.h"
+#include "nvs_local.h"
 
 #define TAG "unique_id.cpp"
 
@@ -61,45 +62,12 @@ void log_unique_id(uint8_t *unique_id)
     free(s);
 }
 
-nvs_handle_t nvs_open(nvs_open_mode_t open_mode)
-{
-    // Initialize NVS
-    esp_err_t err = nvs_flash_init();
-    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
-    {
-        // NVS partition was truncated and needs to be erased
-        // Retry nvs_flash_init
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        err = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(err);
-
-    // Open
-    ESP_LOGI(TAG, "Opening Non-Volatile Storage (NVS) handle...");
-    nvs_handle_t handle = 0;
-    err = nvs_open(UNIQUE_ID_NVS_NAMESPACE, open_mode, &handle);
-    switch (err)
-    {
-    case ESP_OK:
-        ESP_LOGI(TAG, "NVS handle opened.");
-        break;
-    case ESP_ERR_NVS_NOT_FOUND:
-        ESP_LOGI(TAG, "NVS namespace '%s' not found.", UNIQUE_ID_NVS_NAMESPACE);
-        break;
-    default:
-        ESP_LOGE(TAG, "Error opening NVS handle! (%s)", esp_err_to_name(err));
-        delayed_abort();
-    }
-
-    return handle;
-}
-
 esp_err_t load_unique_id_from_nvs(uint8_t *output)
 {
     nvs_handle_t nvs_handle = nvs_open(NVS_READONLY);
     if (nvs_handle == 0)
     {
-        ESP_LOGI(TAG, "Unique ID is not found in NVS.");
+        ESP_LOGI(TAG, "Cannot opend NVS.");
         return 1;
     }
 

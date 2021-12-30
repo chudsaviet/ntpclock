@@ -21,4 +21,7 @@ struct WifiCommandMessage
 
 void vStartWifiTask(TaskHandle_t *taskHandle, QueueHandle_t *queueHandle);
 
+void vWifiSaveStaSsid(char *ssid);
+void vWifiSaveStaPass(char *pass);
+
 char *xGetWifiStaSsid();
