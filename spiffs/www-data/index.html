@@ -1,13 +1,29 @@
 <!DOCTYPE html>
-<html>
-
+<html data-theme="light">
+    
 <head>
+    <link rel="stylesheet" href="css/pico.min.css">
     <title>NTP clock settings</title>
+    <script src="lib/jquery.min.js"></script>
+    <script>
+    $(document).ready(function(){
+        $("#restart").click(function(){
+            $.ajax({
+                method: "PUT",
+                url: "api/restart"
+            });
+        });
+    });
+    </script>
 </head>
 
 <body>
-    <h1>NTP clock settings</h1>
-    Under construction.
+    <main class="container">
+        <h1>NTP clock settings</h1>
+        <button id="restart" style="width: 30%;">
+            Restart
+        </button>
+    </main>
 </body>
 
 </html>

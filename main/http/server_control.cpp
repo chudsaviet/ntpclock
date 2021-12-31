@@ -35,7 +35,7 @@ void start_http_server()
     if (httpd_start(&server, &config) != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to start HTTP server!");
-        abort();
+        delayed_abort();
     }
 
     register_api_handlers(server);
@@ -44,7 +44,6 @@ void start_http_server()
 
 void vHttpServerControlTask(void *pvParameters)
 {
-
     for (;;)
     {
         while (uxQueueMessagesWaiting(xCommandQueue) != 0)

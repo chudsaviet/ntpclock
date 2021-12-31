@@ -55,7 +55,13 @@ static esp_err_t set_content_type_from_file(httpd_req_t *req, const char *filena
 {
     if (IS_FILE_EXT(filename, ".html")) {
         return httpd_resp_set_type(req, "text/html");
-    } else if (IS_FILE_EXT(filename, ".jpeg")) {
+    } else if (IS_FILE_EXT(filename, ".css")) {
+        return httpd_resp_set_type(req, "text/css");
+        
+    } else if (IS_FILE_EXT(filename, ".js")) {
+        return httpd_resp_set_type(req, "text/javascript");
+        
+    } if (IS_FILE_EXT(filename, ".jpeg")) {
         return httpd_resp_set_type(req, "image/jpeg");
         
     } else if (IS_FILE_EXT(filename, ".png")) {
