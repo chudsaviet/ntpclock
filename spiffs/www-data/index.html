@@ -2,6 +2,7 @@
 <html data-theme="light">
     
 <head>
+    <meta charset="UTF-8">
     <link rel="stylesheet" href="css/pico.min.css">
     <title>NTP clock settings</title>
     <script src="lib/jquery.min.js"></script>
@@ -13,6 +14,27 @@
                 url: "api/restart"
             });
         });
+
+        $("#save").click(function(){
+            $.ajax({
+                method: "PUT",
+                url: "api/wifi_sta_ssid",
+                data: JSON.stringify({
+                    "ssid": $("#ssid").val()
+                })
+            });
+            $.ajax({
+                method: "PUT",
+                url: "api/wifi_sta_password",
+                data: JSON.stringify({
+                    "password": $("#password").val()
+                })
+            });
+        });
+
+        $.getJSON( "api/wifi_sta_ssid", function( resp ) {
+            $("#ssid").val(resp.ssid);
+        });
     });
     </script>
 </head>
@@ -20,10 +42,22 @@
 <body>
     <main class="container">
         <h1>NTP clock settings</h1>
-        <button id="restart" style="width: 30%;">
-            Restart
-        </button>
-    </main>
+        <!-- Grid -->
+        <div class="grid">
+          <label for="ssid">
+            SSID
+            <input type="text" id="ssid" name="ssid" placeholder="NULL">
+          </label>
+      
+          <label for="password">
+            Password
+            <input type="password" id="password" name="password">
+          </label>
+        </div>
+      
+        <!-- Button -->
+        <button type="submit" id="save" style="width: 30%;">Save</button>
+        <button id="restart" style="width: 30%;">Restart</button>
 </body>
 
 </html>

@@ -191,11 +191,11 @@ void wifi_bits_wait()
 
     if (bits & WIFI_CONNECTED_BIT)
     {
-        ESP_LOGI(TAG, "Connected to ap SSID: `%s`.", WIFI_SSID);
+        ESP_LOGI(TAG, "Connected.");
     }
     else if (bits & WIFI_FAIL_BIT)
     {
-        ESP_LOGI(TAG, "Failed to connect to SSID: `%s`.", WIFI_SSID);
+        ESP_LOGI(TAG, "Failed to connect.");
     }
     else
     {

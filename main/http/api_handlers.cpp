@@ -81,15 +81,15 @@ static esp_err_t put_wifi_sta_password_handler(httpd_req_t *req)
         }
         return ESP_FAIL;
     }
-    ESP_LOGD(TAG, "put_wifi_sta_password_handler received:\n%s", content);
+    ESP_LOGD(TAG, "put_wifi_sta_password_handler received.");
 
     cJSON *json = cJSON_ParseWithLength((char *)&content, req->content_len);
-    cJSON *ssid = cJSON_GetObjectItemCaseSensitive(json, "password");
+    cJSON *password = cJSON_GetObjectItemCaseSensitive(json, "password");
 
-    if (cJSON_IsString(ssid) && (ssid->valuestring != NULL))
+    if (cJSON_IsString(password) && (password->valuestring != NULL))
     {
         ESP_LOGI(TAG, "Setting WiFi STA password.");
-        vWifiSaveStaPass(ssid->valuestring);
+        vWifiSaveStaPass(password->valuestring);
     }
 
     cJSON_Delete(json);
