@@ -22,6 +22,9 @@
 #define IS_FILE_EXT(filename, ext) \
     (strcasecmp(&filename[strlen(filename) - sizeof(ext) + 1], ext) == 0)
 
+#define GZIP_EXTENSION ".gz"
+#define GZIP_CONTENT_ENCODING "gzip"
+
 static char scratch[SCRATCH_BUFSIZE_BYTES];
 
 static const char* get_path_from_uri(char *dest, const char *base_path, const char *uri, size_t destsize)
@@ -77,7 +80,7 @@ static esp_err_t set_content_type_from_file(httpd_req_t *req, const char *filena
 
 static esp_err_t download_get_handler(httpd_req_t *req)
 {
-    char filepath[FILE_PATH_MAX];
+    char filepath[FILE_PATH_MAX+1] = {0};
     FILE *fd = NULL;
     struct stat file_stat;
 
@@ -90,16 +93,33 @@ static esp_err_t download_get_handler(httpd_req_t *req)
 
     if (!filename) {
         ESP_LOGE(TAG, "Filename is too long");
-        /* Respond with 500 Internal Server Error */
         httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Filename too long");
         return ESP_FAIL;
     }
 
-    if (stat(filepath, &file_stat) == -1) {
-        ESP_LOGE(TAG, "Failed to stat file : %s", filepath);
-        /* Respond with 404 Not Found */
-        httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "404 NOT FOUND");
+    size_t filepath_len = strlen(filepath);
+    if (filepath_len > FILE_PATH_MAX - sizeof(GZIP_EXTENSION)) {
+        ESP_LOGE(TAG, "Filename is too long");
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Filename too long");
         return ESP_FAIL;
+    }
+
+    set_content_type_from_file(req, filename);
+
+    // Check if compressed variant exists.
+    strcpy(filepath+filepath_len, GZIP_EXTENSION);
+    if (stat(filepath, &file_stat) != -1) {
+        ESP_LOGI(TAG, "Compressed file found.");
+        httpd_resp_set_hdr(req, "Content-Encoding", GZIP_CONTENT_ENCODING);
+    } else {
+        // Cut Brotli extension from path.
+        filepath[filepath_len] = 0;
+        if (stat(filepath, &file_stat) == -1) {
+            ESP_LOGE(TAG, "Failed to stat file : %s", filepath);
+            /* Respond with 404 Not Found */
+            httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "404 NOT FOUND");
+            return ESP_FAIL;
+        }
     }
 
     fd = fopen(filepath, "r");
@@ -111,8 +131,7 @@ static esp_err_t download_get_handler(httpd_req_t *req)
     }
 
     ESP_LOGI(TAG, "Sending file : %s (%ld bytes)...", filename, file_stat.st_size);
-    set_content_type_from_file(req, filename);
-
+    
     /* Retrieve the pointer to scratch buffer for temporary storage */
     char *chunk = scratch;
     size_t chunksize;

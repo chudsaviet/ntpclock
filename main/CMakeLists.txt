@@ -18,7 +18,7 @@ INCLUDE_DIRS "."
 )
 
 add_custom_command(OUTPUT ${BUILD_DIR}/spiffs-image
-     COMMAND cp -r ${PROJECT_DIR}/spiffs ${BUILD_DIR}/spiffs-image
+     COMMAND ${PROJECT_DIR}/prepare_spiffs_image.sh ${PROJECT_DIR} ${BUILD_DIR}
      VERBATIM)
 
 add_custom_target(spiffs-image DEPENDS ${BUILD_DIR}/spiffs-image)
