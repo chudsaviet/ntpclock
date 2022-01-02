@@ -17,4 +17,11 @@ idf_component_register(SRCS
 INCLUDE_DIRS "."
 )
 
-spiffs_create_partition_image(storage ../spiffs FLASH_IN_PROJECT)
+add_custom_command(OUTPUT ${BUILD_DIR}/spiffs-image
+     COMMAND cp -r ${PROJECT_DIR}/spiffs ${BUILD_DIR}/spiffs-image
+     VERBATIM)
+
+add_custom_target(spiffs-image DEPENDS ${BUILD_DIR}/spiffs-image)
+add_dependencies(app spiffs-image)
+
+spiffs_create_partition_image(storage ${BUILD_DIR}/spiffs-image FLASH_IN_PROJECT)
