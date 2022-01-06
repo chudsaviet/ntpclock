@@ -18,7 +18,12 @@
 
 #define HTTP_SERVER_CONTROL_LOOP_DELAY_MS 1000
 #define HTTP_SERVER_CONTROL_TASK_CORE 1
+#define HTTP_SERVER_TASK_CORE 1
 #define HTTP_SERVER_CONTROL_QUEUE_SIZE 4
+#define HTTP_SERVER_MAX_OPEN_SOCKETS 13
+#define HTTP_SERVER_MAX_RESP_HEADERS 16
+#define HTTP_SERVER_MAX_URI_HANDLERS 16
+#define HTTP_SERVER_BACKLOG_CONN 10
 
 static QueueHandle_t xCommandQueue = 0;
 
@@ -28,7 +33,11 @@ void start_http_server()
 {
     httpd_handle_t server = NULL;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-
+    config.core_id = HTTP_SERVER_TASK_CORE;
+    config.max_open_sockets = HTTP_SERVER_MAX_OPEN_SOCKETS;
+    config.max_resp_headers = HTTP_SERVER_MAX_RESP_HEADERS;
+    config.max_uri_handlers = HTTP_SERVER_MAX_URI_HANDLERS;
+    config.backlog_conn = HTTP_SERVER_BACKLOG_CONN;
     config.uri_match_fn = httpd_uri_match_wildcard;
 
     ESP_LOGI(TAG, "Starting HTTP Server on port: '%d'", config.server_port);

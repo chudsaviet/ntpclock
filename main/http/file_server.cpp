@@ -14,7 +14,7 @@
 #define FILE_PATH_MAX (ESP_VFS_PATH_MAX + CONFIG_SPIFFS_OBJ_NAME_LEN)
 #define SCRATCH_BUFSIZE_BYTES  8192
 
-#define SPIFFS_BASE_PATH "/spiffs/www-data"
+#define SPIFFS_BASE_PATH "/spiffs/w"
 
 #define INDEX_PAGE "/index.html"
 

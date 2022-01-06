@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+
+    <title>NTP clock settings</title>
+    <link rel="icon" type="image/png" href="/favicon.png">
+
+    <script src="/js/jquery.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="/s/semantic.min.css">
+    <script src="/s/semantic.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            $("#restart").click(function () {
+                $.ajax({
+                    method: "PUT",
+                    url: "api/restart"
+                });
+            });
+
+            $("#save").click(function () {
+                $.ajax({
+                    method: "PUT",
+                    url: "api/wifi_sta_ssid",
+                    data: JSON.stringify({
+                        "ssid": $("#ssid").val()
+                    })
+                });
+                $.ajax({
+                    method: "PUT",
+                    url: "api/wifi_sta_password",
+                    data: JSON.stringify({
+                        "password": $("#password").val()
+                    })
+                });
+            });
+
+            $.getJSON("api/wifi_sta_ssid", function (resp) {
+                $("#ssid").val(resp.ssid);
+            });
+        });
+    </script>
+</head>
+
+<body>
+    <div class="ui hidden divider"></div>
+    <div class="ui container">
+        <div class="ui grid">
+            <div class="ui eight wide column">
+                <h1 class="ui header">NTP clock settings</h1>
+            </div>
+            <div class="ui eight wide column">
+                <div class="ui eight wide column">
+                    <button id="restart" class="ui right floated big primary button">Restart</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="ui grid">
+            <div class="ui six wide column">
+                <div class="ui fluid labeled input">
+                    <div class="ui label">
+                        SSID
+                    </div>
+                    <input type="text" id="ssid" placeholder="NULL">
+                </div>
+                <div class="ui hidden divider"></div>
+
+                <div class="ui fluid labeled input">
+                    <div class="ui label">
+                        Password
+                    </div>
+                    <input type="password" id="password" placeholder="••••••••">
+                </div>
+                <div class="ui hidden divider"></div>
+
+                <button id="save" class="ui right floated button">Save</button>
+            </div>
+            <div class="ui ten wide column">
+                <div class="ui fluid top attached  buttons">
+                    <button id="scan" class="ui button">Scan</button>
+                    <button id="set" class="ui button">Set</button>
+                </div>
+                <table class="ui attached disabled celled table">
+                    <thead>
+                        <tr>
+                            <th>SSID</th>
+                            <th>Signal</th>
+                            <th>Security</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td data-label="SSID"></td>
+                            <td data-label="Signal"></td>
+                            <td data-label="Security"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
