@@ -5,6 +5,7 @@
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "freertos/event_groups.h"
+#include "freertos/semphr.h"
 #include "esp_system.h"
 #include "esp_wifi.h"
 #include "esp_event.h"
@@ -42,6 +43,11 @@ static EventGroupHandle_t s_wifi_event_group = NULL;
 #define WPA_PASSWORD_MAX_LENGTH_CHARS 64
 #define WIFI_STA_SSID_NVS_KEY "wifi_sta_ssid"
 #define WIFI_STA_PASS_NVS_KEY "wifi_sta_pass"
+#define WIFI_SCAN_SEMAPHORE_BLOCK_TIME_MS 120000
+#define WIFI_DEFAULT_SCAN_LIST_SIZE 32
+#define WIFI_CHANNEL_ACTIVE_SCAN_TIME_MIN_MS 120
+#define WIFI_CHANNEL_ACTIVE_SCAN_TIME_MAX_MS 240
+#define WIFI_CHANNEL_PASSIVE_SCAN_TIME_MS 360
 
 #define HOSTNAME_TEMPLATE "ntpclock-XXXXXXXX"
 #define HOSTNAME_SUFFIX_LENGTH_CHARS 8
@@ -61,6 +67,7 @@ static esp_event_handler_instance_t s_instance_any_id = NULL;
 static esp_event_handler_instance_t s_instance_got_ip = NULL;
 
 static QueueHandle_t xCommandQueue = 0;
+static SemaphoreHandle_t xScanSemaphore = 0;
 
 void vWifiSaveStaSsid(char *ssid) {
     ESP_LOGI(TAG, "Saving WiFi STA SSID to NVS.");
@@ -218,6 +225,20 @@ void init_hostname()
     }
 }
 
+wifi_config_t xPrepareStaConfig() {
+    wifi_config_t wifi_config;
+    memset(&wifi_config, 0, sizeof(wifi_config));
+    
+    strcpy((char *)wifi_config.sta.ssid, WIFI_SSID);
+    strcpy((char *)wifi_config.sta.password, WIFI_PASS);
+    wifi_config.sta.threshold.authmode = WIFI_AUTH_MODE;
+    wifi_config.sta.pmf_cfg.capable = true;
+    wifi_config.sta.pmf_cfg.required = false;
+    vPrepareStaSsidAndPass(&wifi_config);
+
+    return wifi_config;
+}
+
 void wifi_start(void)
 {
     s_sta_netif = esp_netif_create_default_wifi_sta();
@@ -238,19 +259,12 @@ void wifi_start(void)
                                                         NULL,
                                                         &s_instance_got_ip));
 
-    wifi_config_t wifi_config = {};
-    
-    strcpy((char *)wifi_config.sta.ssid, WIFI_SSID);
-    strcpy((char *)wifi_config.sta.password, WIFI_PASS);
-    wifi_config.sta.threshold.authmode = WIFI_AUTH_MODE;
-    wifi_config.sta.pmf_cfg.capable = true;
-    wifi_config.sta.pmf_cfg.required = WIFI_PMF_REQUIRED;
-    vPrepareStaSsidAndPass(&wifi_config);
+    wifi_config_t sta_config = xPrepareStaConfig();
 
-    ESP_LOGI(TAG, "Connecting to '%s'", (char *)&wifi_config.sta.ssid);
+    ESP_LOGI(TAG, "Connecting to '%s'", (char *)&sta_config.sta.ssid);
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &sta_config));
     ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_MIN_MODEM));
     ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_start());
 
@@ -267,16 +281,10 @@ void wifi_restart()
     wifi_bits_wait();
 }
 
-void vSwitchToApMode()
-{
-    // Stop STA mode.
-    ESP_ERROR_CHECK(esp_wifi_stop());
-    esp_netif_destroy(s_sta_netif);
-
-    s_ap_netif = esp_netif_create_default_wifi_ap();
-
+wifi_config_t xPrepareApConfig() {
     // SSID will be equal to the hostname
-    wifi_config_t wifi_config = {0};
+    wifi_config_t wifi_config;
+    memset(&wifi_config, 0, sizeof(wifi_config));
     wifi_config.ap.channel = WIFI_AP_CHANNEL;
     wifi_config.ap.max_connection = WIFI_AP_MAX_CONNECTIONS;
     wifi_config.ap.authmode = WIFI_AP_AUTH_MODE;
@@ -284,12 +292,23 @@ void vSwitchToApMode()
     memcpy(&wifi_config.ap.ssid, &hostname, sizeof hostname);
     memcpy(&wifi_config.ap.password, &wpaPassword, wpaPasswordLength);
 
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));
+    return wifi_config;
+}
+
+void vSwitchToApMode()
+{
+    ESP_ERROR_CHECK(esp_wifi_stop());
+
+    s_ap_netif = esp_netif_create_default_wifi_ap();
+
+    wifi_config_t ap_config = xPrepareApConfig();
+
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_APSTA));
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &ap_config));
     ESP_ERROR_CHECK(esp_wifi_start());
 
     ESP_LOGI(TAG, "Switching to WiFi AP mode finished. SSID: '%s', channel: %d.",
-             (char *)&wifi_config.ap.ssid, wifi_config.ap.channel);
+             (char *)&ap_config.ap.ssid, ap_config.ap.channel);
 }
 
 void vWifiControlTask(void *pvParameters)
@@ -363,7 +382,8 @@ void vStartWifiTask(TaskHandle_t *taskHandle, QueueHandle_t *queueHandle)
 
 char *xGetWifiStaSsid()
 {
-    wifi_config_t wifi_config = {0};
+    wifi_config_t wifi_config;
+    memset(&wifi_config, 0, sizeof(wifi_config));
     ESP_ERROR_CHECK(esp_wifi_get_config(WIFI_IF_STA, &wifi_config));
 
     size_t ssid_len = strlen((char *)&wifi_config.sta.ssid);
@@ -371,4 +391,80 @@ char *xGetWifiStaSsid()
     strcpy(ssid, (char *)&wifi_config.sta.ssid);
 
     return ssid;
+}
+
+int16_t usScanWifi(wifi_ap_record_t **ap_info) {
+    ESP_LOGI(TAG, "Starting WiFi scan...");
+    if (xScanSemaphore == 0) {
+        xScanSemaphore = xSemaphoreCreateBinary();
+        ESP_LOGD(TAG, "WiFi scan semaphore created.");
+    } else {
+        if (xSemaphoreTake(xScanSemaphore, pdMS_TO_TICKS(WIFI_SCAN_SEMAPHORE_BLOCK_TIME_MS)) == pdFALSE) {
+            ESP_LOGE(TAG, "WiFi scan semphore take timeout.");
+            return 0;
+        }
+        ESP_LOGD(TAG, "WiFi scan semaphore talken.");
+    }
+
+    uint16_t number = WIFI_DEFAULT_SCAN_LIST_SIZE;
+    *ap_info = (wifi_ap_record_t *)malloc(sizeof(wifi_ap_record_t) * WIFI_DEFAULT_SCAN_LIST_SIZE);
+    memset(*ap_info, 0, sizeof(wifi_ap_record_t) * WIFI_DEFAULT_SCAN_LIST_SIZE);
+    uint16_t ap_count = 0;
+    
+    wifi_scan_config_t scan_config;
+    memset(&scan_config, 0, sizeof(scan_config));
+    scan_config.scan_type = WIFI_SCAN_TYPE_ACTIVE;
+    scan_config.show_hidden = false;
+    scan_config.scan_time.active.min = WIFI_CHANNEL_ACTIVE_SCAN_TIME_MIN_MS;
+    scan_config.scan_time.active.max = WIFI_CHANNEL_ACTIVE_SCAN_TIME_MAX_MS;
+    scan_config.scan_time.passive = WIFI_CHANNEL_PASSIVE_SCAN_TIME_MS;
+
+    ESP_LOGI(TAG, "Scanning WiFi...");
+    esp_err_t scan_status = esp_wifi_scan_start(&scan_config, true);
+    switch (scan_status)
+    {
+    case ESP_OK:
+        ESP_LOGI(TAG, "ESP_OK: WiFi scan succeeded.");
+        break;
+    case ESP_ERR_WIFI_NOT_INIT:
+        ESP_LOGE(TAG, "ESP_ERR_WIFI_NOT_INIT: WiFi is not initialized by esp_wifi_init.");
+        xSemaphoreGive(xScanSemaphore);
+        return -1;
+        break;
+    case ESP_ERR_WIFI_NOT_STARTED:
+        ESP_LOGE(TAG, "ESP_ERR_WIFI_NOT_STARTED: WiFi was not started by esp_wifi_start.");
+        xSemaphoreGive(xScanSemaphore);
+        return -1;
+        break;
+    case ESP_ERR_WIFI_TIMEOUT:
+        ESP_LOGE(TAG, "ESP_ERR_WIFI_TIMEOUT: blocking scan timeout.");
+        xSemaphoreGive(xScanSemaphore);
+        return -1;
+        break;
+    case ESP_ERR_WIFI_STATE:
+        ESP_LOGE(TAG, "ESP_ERR_WIFI_STATE: WiFi still connecting on invoking esp_wifi_scan_start.");
+        xSemaphoreGive(xScanSemaphore);
+        return -1;
+        break;
+    default:
+        ESP_LOGE(TAG, "WiFi scan other error: %d.", scan_status);
+        xSemaphoreGive(xScanSemaphore);
+        return -1;
+        break;
+    }
+    ESP_LOGI(TAG, "WiFi scan finished.");
+
+    ESP_ERROR_CHECK(esp_wifi_scan_get_ap_records(&number, *ap_info));
+    ESP_ERROR_CHECK(esp_wifi_scan_get_ap_num(&ap_count));
+    ESP_LOGI(TAG, "Total APs scanned = %u", ap_count);
+    for (int i = 0; (i < WIFI_DEFAULT_SCAN_LIST_SIZE) && (i < ap_count); i++) {
+        ESP_LOGI(TAG, "SSID \t\t%s", (*ap_info)[i].ssid);
+        ESP_LOGI(TAG, "RSSI \t\t%d", (*ap_info)[i].rssi);
+        ESP_LOGI(TAG, "Channel \t\t%d\n", (*ap_info)[i].primary);
+    }
+    
+    ESP_LOGD(TAG, "Giving WiFi scan semaphore.");
+    xSemaphoreGive(xScanSemaphore);
+
+    return ap_count;
 }

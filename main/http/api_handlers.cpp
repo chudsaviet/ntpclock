@@ -24,23 +24,26 @@ static esp_err_t get_wifi_sta_ssid_handler(httpd_req_t *req)
 
     httpd_resp_set_type(req, "application/json");
     httpd_resp_send(req, (const char *)send_buffer, strlen((char *)&send_buffer));
-    
+
     return ESP_OK;
 }
 
 static esp_err_t put_wifi_sta_ssid_handler(httpd_req_t *req)
 {
-    if(req->content_len > HTTP_PUT_MAX_CONTENT_SIZE_BYTES) {
+    if (req->content_len > HTTP_PUT_MAX_CONTENT_SIZE_BYTES)
+    {
         // ESP-IDF does not support HTTP error 413 Content too long.
         httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Content too long. Max length HTTP_PUT_MAX_CONTENT_SIZE_BYTES bytes.");
         return ESP_OK;
     }
 
-    char content[req->content_len+1] = {0};
+    char content[req->content_len + 1] = {0};
 
     int ret = httpd_req_recv(req, content, req->content_len);
-    if (ret <= 0) {
-        if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
+    if (ret <= 0)
+    {
+        if (ret == HTTPD_SOCK_ERR_TIMEOUT)
+        {
             httpd_resp_send_408(req);
         }
         return ESP_FAIL;
@@ -60,23 +63,26 @@ static esp_err_t put_wifi_sta_ssid_handler(httpd_req_t *req)
 
     // Send empty response to complete the request.
     httpd_resp_send(req, NULL, 0);
-    
+
     return ESP_OK;
 }
 
 static esp_err_t put_wifi_sta_password_handler(httpd_req_t *req)
 {
-    if(req->content_len > HTTP_PUT_MAX_CONTENT_SIZE_BYTES) {
+    if (req->content_len > HTTP_PUT_MAX_CONTENT_SIZE_BYTES)
+    {
         // ESP-IDF does not support HTTP error 413 Content too long.
         httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Content too long. Max length HTTP_PUT_MAX_CONTENT_SIZE_BYTES bytes.");
         return ESP_OK;
     }
 
-    char content[req->content_len+1] = {0};
+    char content[req->content_len + 1] = {0};
 
     int ret = httpd_req_recv(req, content, req->content_len);
-    if (ret <= 0) {
-        if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
+    if (ret <= 0)
+    {
+        if (ret == HTTPD_SOCK_ERR_TIMEOUT)
+        {
             httpd_resp_send_408(req);
         }
         return ESP_FAIL;
@@ -96,7 +102,75 @@ static esp_err_t put_wifi_sta_password_handler(httpd_req_t *req)
 
     // Send empty response to complete the request.
     httpd_resp_send(req, NULL, 0);
-    
+
+    return ESP_OK;
+}
+
+static char *wifi_auth_mode_to_string(wifi_auth_mode_t authmode)
+{
+    switch (authmode)
+    {
+    case WIFI_AUTH_OPEN:
+        return "Open";
+        break;
+    case WIFI_AUTH_WEP:
+        return "WEP";
+        break;
+    case WIFI_AUTH_WPA_PSK:
+        return "WPA_PSK";
+        break;
+    case WIFI_AUTH_WPA2_PSK:
+        return "WPA2_PSK";
+        break;
+    case WIFI_AUTH_WPA_WPA2_PSK:
+        return "WPA_WPA2_PSK";
+        break;
+    case WIFI_AUTH_WPA2_ENTERPRISE:
+        return "WPA2_ENTERPRISE";
+        break;
+    case WIFI_AUTH_WPA3_PSK:
+        return "WPA3_PSK";
+        break;
+    case WIFI_AUTH_WPA2_WPA3_PSK:
+        return "WPA2_WPA3_PSK";
+        break;
+    default:
+        return "Unknown";
+        break;
+    }
+}
+
+static esp_err_t get_wifi_scan_handler(httpd_req_t *req)
+{
+    wifi_ap_record_t *ap_info;
+    int16_t ap_count = usScanWifi(&ap_info);
+    if (ap_count < 0) {
+        free(ap_info);
+        httpd_resp_send_500(req);
+        return ESP_OK;
+    }
+
+    cJSON *response = cJSON_CreateObject();
+    cJSON *ap_array = cJSON_AddArrayToObject(response, "access_points");
+
+    for (int i = 0; i < ap_count; i++)
+    {
+        cJSON *ap_record = cJSON_CreateObject();
+        cJSON_AddStringToObject(ap_record, "ssid", (char *)ap_info[i].ssid);
+        double rssi = ap_info[i].rssi;
+        cJSON_AddNumberToObject(ap_record, "rssi", rssi);
+        cJSON_AddStringToObject(ap_record, "auth_mode", wifi_auth_mode_to_string(ap_info[i].authmode));
+        cJSON_AddItemToArray(ap_array, ap_record);
+    }
+    free(ap_info);
+
+    char *send_buffer = cJSON_Print(response);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_sendstr(req, send_buffer);
+
+    free(send_buffer);
+    cJSON_Delete(response);
+
     return ESP_OK;
 }
 
@@ -104,7 +178,7 @@ static esp_err_t restart_handler(httpd_req_t *req)
 {
     ESP_LOGI(TAG, "Restart request received.");
     esp_restart();
-    
+
     return ESP_OK;
 }
 
@@ -141,6 +215,14 @@ void register_api_handlers(httpd_handle_t server)
         .uri = "/api/wifi_sta_password",
         .method = HTTP_PUT,
         .handler = put_wifi_sta_password_handler,
+        .user_ctx = NULL};
+    httpd_register_uri_handler(server, &handler_params);
+
+    ESP_LOGD(TAG, "Registering GET WiFi Scan handler.");
+    handler_params = {
+        .uri = "/api/wifi_scan",
+        .method = HTTP_GET,
+        .handler = get_wifi_scan_handler,
         .user_ctx = NULL};
     httpd_register_uri_handler(server, &handler_params);
 }
