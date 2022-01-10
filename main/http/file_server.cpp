@@ -23,6 +23,7 @@
     (strcasecmp(&filename[strlen(filename) - sizeof(ext) + 1], ext) == 0)
 
 #define GZIP_EXTENSION ".gz"
+#define GZIP_EXTENSION_LEN 3
 #define GZIP_CONTENT_ENCODING "gzip"
 
 static char scratch[SCRATCH_BUFSIZE_BYTES];
@@ -60,19 +61,14 @@ static esp_err_t set_content_type_from_file(httpd_req_t *req, const char *filena
         return httpd_resp_set_type(req, "text/html");
     } else if (IS_FILE_EXT(filename, ".css")) {
         return httpd_resp_set_type(req, "text/css");
-        
     } else if (IS_FILE_EXT(filename, ".js")) {
         return httpd_resp_set_type(req, "text/javascript");
-        
-    } if (IS_FILE_EXT(filename, ".jpeg")) {
-        return httpd_resp_set_type(req, "image/jpeg");
-        
     } else if (IS_FILE_EXT(filename, ".png")) {
         return httpd_resp_set_type(req, "image/png");
-        
-    } else if (IS_FILE_EXT(filename, ".ico")) {
-        return httpd_resp_set_type(req, "image/x-icon");
-    }
+    } else if (IS_FILE_EXT(filename, ".jpeg")) {
+        return httpd_resp_set_type(req, "image/jpeg");
+    } 
+
     /* This is a limited set only */
     /* For any other type always set as plain text */
     return httpd_resp_set_type(req, "text/plain");
@@ -80,57 +76,56 @@ static esp_err_t set_content_type_from_file(httpd_req_t *req, const char *filena
 
 static esp_err_t download_get_handler(httpd_req_t *req)
 {
-    char filepath[FILE_PATH_MAX+1] = {0};
+    char vfs_path[FILE_PATH_MAX+1];
+    memset(vfs_path, 0, sizeof(vfs_path));
     FILE *fd = NULL;
     struct stat file_stat;
 
-    const char *filename = get_path_from_uri(filepath, SPIFFS_BASE_PATH, req->uri, sizeof(filepath));
+    const char *file_name = get_path_from_uri(vfs_path, SPIFFS_BASE_PATH, req->uri, sizeof(vfs_path));
+    // get_path_from_uri() returns NULL if file path is too.
+    if (!file_name) {
+        ESP_LOGI(TAG, "Requested file path is too long.");
+        httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "404 NOT FOUND - server does not support this long file names.");
+        // We are actually OK, we just don't have this file.
+        return ESP_OK;
+    }
 
     // By default send index page.
-    if (strcmp(filename, "/") == 0) {
-        filename = get_path_from_uri(filepath, SPIFFS_BASE_PATH, INDEX_PAGE, sizeof(filepath));
+    if (strcmp(file_name, "/") == 0) {
+        file_name = get_path_from_uri(vfs_path, SPIFFS_BASE_PATH, INDEX_PAGE, sizeof(vfs_path));
     }
 
-    if (!filename) {
-        ESP_LOGE(TAG, "Filename is too long");
-        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Filename too long");
-        return ESP_FAIL;
-    }
+    size_t vfs_path_len = strlen(vfs_path);
+    set_content_type_from_file(req, file_name);
 
-    size_t filepath_len = strlen(filepath);
-    if (filepath_len > FILE_PATH_MAX - sizeof(GZIP_EXTENSION)) {
-        ESP_LOGE(TAG, "Filename is too long");
-        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Filename too long");
-        return ESP_FAIL;
-    }
-
-    set_content_type_from_file(req, filename);
-
-    // Check if compressed variant exists.
-    strcpy(filepath+filepath_len, GZIP_EXTENSION);
-    if (stat(filepath, &file_stat) != -1) {
-        ESP_LOGI(TAG, "Compressed file found.");
-        httpd_resp_set_hdr(req, "Content-Encoding", GZIP_CONTENT_ENCODING);
+    // We will look for compressed file only if there is enought space for the extension in the max path len.
+    if (vfs_path_len < FILE_PATH_MAX - GZIP_EXTENSION_LEN) {
+        strcpy(vfs_path+vfs_path_len, GZIP_EXTENSION);
+        if (stat(vfs_path, &file_stat) != -1) {
+            ESP_LOGI(TAG, "Compressed file found.");
+            httpd_resp_set_hdr(req, "Content-Encoding", GZIP_CONTENT_ENCODING);
+        } else {
+            // Cut compression extension from path.
+            vfs_path[vfs_path_len] = 0;
+        }
     } else {
-        // Cut Brotli extension from path.
-        filepath[filepath_len] = 0;
-        if (stat(filepath, &file_stat) == -1) {
-            ESP_LOGE(TAG, "Failed to stat file : %s", filepath);
-            /* Respond with 404 Not Found */
+        if (stat(vfs_path, &file_stat) == -1) {
+            ESP_LOGI(TAG, "Failed to stat file : %s", vfs_path);
             httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "404 NOT FOUND");
-            return ESP_FAIL;
+            // We are actually OK, we just don't have this file.
+            return ESP_OK;
         }
     }
 
-    fd = fopen(filepath, "r");
+    fd = fopen(vfs_path, "r");
     if (!fd) {
-        ESP_LOGE(TAG, "Failed to read existing file : %s", filepath);
+        ESP_LOGE(TAG, "Failed to read existing file : %s", vfs_path);
         /* Respond with 500 Internal Server Error */
-        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to read existing file");
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "500 Failed to read existing file.");
         return ESP_FAIL;
     }
 
-    ESP_LOGI(TAG, "Sending file : %s (%ld bytes)...", filename, file_stat.st_size);
+    ESP_LOGI(TAG, "Sending file : %s (%ld bytes)...", file_name, file_stat.st_size);
     
     /* Retrieve the pointer to scratch buffer for temporary storage */
     char *chunk = scratch;

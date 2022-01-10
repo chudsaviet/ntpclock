@@ -10,6 +10,7 @@
     <link rel="icon" type="image/png" href="/favicon.png">
 
     <script src="/js/jquery.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="/css/fonts.css">
     <link rel="stylesheet" type="text/css" href="/s/semantic.min.css">
     <script src="/s/semantic.min.js"></script>
     <script src="/js/tablesort.js"></script>
@@ -21,55 +22,83 @@
             const NETWORKS_TABLE_MAX_ELEMENTS = 16;
 
             $('table').tablesort()
-        
+
             function blinkPositive(button) {
                 button.addClass("positive");
-                setTimeout(function() {
+                setTimeout(function () {
                     button.removeClass("positive");
                 }, BUTTON_BLINK_LONG_DELAY_MS);
-                setTimeout(function() {
+                setTimeout(function () {
                     button.addClass("positive");
                 }, BUTTON_BLINK_LONG_DELAY_MS + BUTTON_BLINK_SHORT_DELAY_MS);
-                setTimeout(function() {
+                setTimeout(function () {
                     button.removeClass("positive");
-                }, BUTTON_BLINK_LONG_DELAY_MS*2 + BUTTON_BLINK_SHORT_DELAY_MS);
+                }, BUTTON_BLINK_LONG_DELAY_MS * 2 + BUTTON_BLINK_SHORT_DELAY_MS);
             }
 
             function blinkNegative(button) {
                 button.addClass("negative");
-                setTimeout(function() {
+                setTimeout(function () {
                     button.removeClass("negative");
                 }, BUTTON_BLINK_LONG_DELAY_MS);
-                setTimeout(function() {
+                setTimeout(function () {
                     button.addClass("negative");
                 }, BUTTON_BLINK_LONG_DELAY_MS + BUTTON_BLINK_SHORT_DELAY_MS);
-                setTimeout(function() {
+                setTimeout(function () {
                     button.removeClass("negative");
-                }, BUTTON_BLINK_LONG_DELAY_MS*2 + BUTTON_BLINK_SHORT_DELAY_MS);
+                }, BUTTON_BLINK_LONG_DELAY_MS * 2 + BUTTON_BLINK_SHORT_DELAY_MS);
             }
 
             $("#restart").click(function () {
+                var restartButton = $("#restart");
+                restartButton.addClass("disabled");
+                restartButton.addClass("loading");
                 $.ajax({
                     method: "PUT",
                     url: "api/restart"
-                });
+                }).done(function (resp) {
+                    blinkPositive(restartButton);
+                })
+                    .fail(function () {
+                        blinkNegative(restartButton);
+                    })
+                    .always(function () {
+                        restartButton.removeClass("loading");
+                        restartButton.removeClass("disabled");
+                    })
+                    ;
             });
 
             $("#save").click(function () {
-                $.ajax({
-                    method: "PUT",
-                    url: "api/wifi_sta_ssid",
-                    data: JSON.stringify({
-                        "ssid": $("#ssid").val()
+                var saveButton = $("#save");
+                saveButton.addClass("disabled");
+                saveButton.addClass("loading");
+                $.when(
+                    $.ajax({
+                        method: "PUT",
+                        url: "api/wifi_sta_ssid",
+                        data: JSON.stringify({
+                            "ssid": $("#ssid").val()
+                        })
+                    }),
+                    $.ajax({
+                        method: "PUT",
+                        url: "api/wifi_sta_password",
+                        data: JSON.stringify({
+                            "password": $("#password").val()
+                        })
                     })
-                });
-                $.ajax({
-                    method: "PUT",
-                    url: "api/wifi_sta_password",
-                    data: JSON.stringify({
-                        "password": $("#password").val()
+                ).done(function (resp) {
+                    blinkPositive(saveButton);
+                })
+                    .fail(function () {
+                        blinkNegative(saveButton);
                     })
-                });
+                    .always(function () {
+                        saveButton.removeClass("loading");
+                        saveButton.removeClass("disabled");
+                    })
+                    ;
             });
 
             $("#scan").click(function () {
@@ -77,7 +106,7 @@
                 scanButton.addClass("disabled");
                 scanButton.addClass("loading");
                 $.getJSON("api/wifi_scan")
-                    .done(function(resp) {
+                    .done(function (resp) {
                         blinkPositive(scanButton);
                         var tableBody = $("#networks_table_body");
                         tableBody.empty();
@@ -105,14 +134,14 @@
                         );
                         $("#networks_table").removeClass("disabled");
                     })
-                    .fail(function() {
+                    .fail(function () {
                         blinkNegative(scanButton);
                     })
-                    .always(function() {
+                    .always(function () {
                         scanButton.removeClass("loading");
                         scanButton.removeClass("disabled");
                     })
-                ;
+                    ;
             });
 
             $.getJSON("api/wifi_sta_ssid", function (resp) {
@@ -140,7 +169,7 @@
             <div class="ui six wide column">
                 <div class="ui fluid labeled input">
                     <div class="ui label">
-                        SSID
+                        <i class="wifi icon"></i>SSID
                     </div>
                     <input type="text" id="ssid" placeholder="NULL">
                 </div>
@@ -148,7 +177,7 @@
 
                 <div class="ui fluid labeled input">
                     <div class="ui label">
-                        Password
+                        <i class="lock icon"></i>Password
                     </div>
                     <input type="password" id="password" placeholder="••••••••">
                 </div>
@@ -157,11 +186,8 @@
                 <button id="save" class="ui right floated button">Save</button>
             </div>
             <div class="ui ten wide column">
-                <div class="ui fluid top attached  buttons">
-                    <button id="scan" class="ui button">Scan</button>
-                    <button id="set" class="ui button">Set</button>
-                </div>
-                <table id="networks_table" class="ui disabled attached sortable selectable celled table" >
+                <button id="scan" class="ui fluid top attached button"><i class="sync icon"></i>Scan</button>
+                <table id="networks_table" class="ui attached sortable selectable celled table disabled">
                     <thead>
                         <tr>
                             <th>SSID</th>
