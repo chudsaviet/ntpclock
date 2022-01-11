@@ -17,36 +17,29 @@
 
     <script>
         $(document).ready(function () {
-            const BUTTON_BLINK_SHORT_DELAY_MS = 100;
-            const BUTTON_BLINK_LONG_DELAY_MS = 500;
+            const BLINK_SHORT_DELAY_MS = 100;
+            const BLINK_LONG_DELAY_MS = 500;
             const NETWORKS_TABLE_MAX_ELEMENTS = 16;
 
             $('table').tablesort()
 
-            function blinkPositive(button) {
-                button.addClass("positive");
+            function blinkClass(element, _class) {
+                element.addClass(_class);
                 setTimeout(function () {
-                    button.removeClass("positive");
-                }, BUTTON_BLINK_LONG_DELAY_MS);
+                    element.removeClass(_class);
+                }, BLINK_LONG_DELAY_MS);
                 setTimeout(function () {
-                    button.addClass("positive");
-                }, BUTTON_BLINK_LONG_DELAY_MS + BUTTON_BLINK_SHORT_DELAY_MS);
+                    element.addClass(_class);
+                }, BLINK_LONG_DELAY_MS + BLINK_SHORT_DELAY_MS);
                 setTimeout(function () {
-                    button.removeClass("positive");
-                }, BUTTON_BLINK_LONG_DELAY_MS * 2 + BUTTON_BLINK_SHORT_DELAY_MS);
+                    element.removeClass(_class);
+                }, BLINK_LONG_DELAY_MS * 2 + BLINK_SHORT_DELAY_MS);
             }
 
-            function blinkNegative(button) {
-                button.addClass("negative");
-                setTimeout(function () {
-                    button.removeClass("negative");
-                }, BUTTON_BLINK_LONG_DELAY_MS);
-                setTimeout(function () {
-                    button.addClass("negative");
-                }, BUTTON_BLINK_LONG_DELAY_MS + BUTTON_BLINK_SHORT_DELAY_MS);
-                setTimeout(function () {
-                    button.removeClass("negative");
-                }, BUTTON_BLINK_LONG_DELAY_MS * 2 + BUTTON_BLINK_SHORT_DELAY_MS);
+            function ssidSetButtonClick() {
+                $("#ssid").val($(this).attr("data-ssid"));
+                $("#password").val("");
+                blinkClass($(this), "positive");
             }
 
             $("#restart").click(function () {
@@ -57,10 +50,10 @@
                     method: "PUT",
                     url: "api/restart"
                 }).done(function (resp) {
-                    blinkPositive(restartButton);
+                    blinkClass(restartButton, "positive");
                 })
                     .fail(function () {
-                        blinkNegative(restartButton);
+                        blinkClass(restartButton, "negative");
                     })
                     .always(function () {
                         restartButton.removeClass("loading");
@@ -89,10 +82,10 @@
                         })
                     })
                 ).done(function (resp) {
-                    blinkPositive(saveButton);
+                    blinkClass(saveButton, "positive");
                 })
                     .fail(function () {
-                        blinkNegative(saveButton);
+                        blinkClass(saveButton, "negative");
                     })
                     .always(function () {
                         saveButton.removeClass("loading");
@@ -107,12 +100,20 @@
                 scanButton.addClass("loading");
                 $.getJSON("api/wifi_scan")
                     .done(function (resp) {
-                        blinkPositive(scanButton);
+                        blinkClass(scanButton, "positive");
                         var tableBody = $("#networks_table_body");
                         tableBody.empty();
                         resp.access_points.slice(0, NETWORKS_TABLE_MAX_ELEMENTS).forEach(
                             element => {
                                 var tr = $("<tr></tr>");
+
+                                var td = $("<td></td>");
+                                var useButton = $("<button class=\"ui fluid compact icon button\"><i class=\"circle icon\"></i></button>")
+                                    .click(ssidSetButtonClick)
+                                    .attr("data-ssid", element.ssid);
+                                td.append(useButton);
+                                td.attr("data-label", "Use");
+                                tr.append(td);
 
                                 var td = $("<td></td>");
                                 td.attr("data-label", "SSID");
@@ -135,7 +136,7 @@
                         $("#networks_table").removeClass("disabled");
                     })
                     .fail(function () {
-                        blinkNegative(scanButton);
+                        blinkClass(scanButton, "negative");
                     })
                     .always(function () {
                         scanButton.removeClass("loading");
@@ -179,7 +180,7 @@
                     <div class="ui label">
                         <i class="lock icon"></i>Password
                     </div>
-                    <input type="password" id="password" placeholder="••••••••">
+                    <input type="password" id="password">
                 </div>
                 <div class="ui hidden divider"></div>
 
@@ -190,13 +191,15 @@
                 <table id="networks_table" class="ui attached sortable selectable celled table disabled">
                     <thead>
                         <tr>
-                            <th>SSID</th>
-                            <th>Signal</th>
-                            <th>Security</th>
+                            <th class="one wide">Use</th>
+                            <th class="eight wide">SSID</th>
+                            <th class="three wide">Signal</th>
+                            <th class="three wide">Security</th>
                         </tr>
                     </thead>
                     <tbody id="networks_table_body">
                         <tr>
+                            <td data-label="Use"></td>
                             <td data-label="SSID"></td>
                             <td data-label="Signal"></td>
                             <td data-label="Security"></td>
