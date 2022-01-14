@@ -189,8 +189,6 @@ void tzListUpdate()
 
 void vTzdataTask(void *pvParameters)
 {
-    loadTimezoneFromNVS();
-    lastTimestampsReadFromNVS();
     tzBegin();
 
     for (;;)
@@ -217,6 +215,9 @@ void vTzdataTask(void *pvParameters)
 
 void vStartTzdataTask(TaskHandle_t *taskHandle)
 {
+    loadTimezoneFromNVS();
+    lastTimestampsReadFromNVS();
+    
     xTaskCreatePinnedToCore(
         vTzdataTask,
         "NTP watch",
