@@ -47,6 +47,8 @@ static QueueHandle_t xWifiCommandQueue = 0;
 static TaskHandle_t xHttpServerControlTask = NULL;
 static QueueHandle_t xHttpServerControlQueue = 0;
 
+static TaskHandle_t xTzdataControlTask = NULL;
+
 void setup()
 {
     // Init unique ID.
@@ -59,9 +61,6 @@ void setup()
     SemaphoreHandle_t i2cSemaphore = xSemaphoreCreateBinary();
     xSemaphoreGive(i2cSemaphore);
 
-    // Initialize TZ conversion library.
-    tzBegin();
-
     // Initialize Arduino environment.
     initArduino();
 
@@ -71,12 +70,6 @@ void setup()
     rtcMessage.command = RtcCommand::DO_SYSTEM_CLOCK_SYNC;
     xQueueSend(xRtcCommandQueue, &rtcMessage, (TickType_t)0);
 
-    ESP_LOGI(TAG, "Starting display task.");
-    vStartDisplayTask(&xDisplayTask, &xDisplayTaskQueue, i2cSemaphore);
-
-    ESP_LOGI(TAG, "Starting ALS task.");
-    vStartAlsTask(&xAlsTask, &xAlsOutputQueue, i2cSemaphore);
-
     ESP_LOGI(TAG, "Initializing NVS.");
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
@@ -85,6 +78,15 @@ void setup()
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
+
+    ESP_LOGI(TAG, "Starting TZ data control task.");
+    vStartTzdataTask(&xTzdataControlTask);
+
+    ESP_LOGI(TAG, "Starting display task.");
+    vStartDisplayTask(&xDisplayTask, &xDisplayTaskQueue, i2cSemaphore);
+
+    ESP_LOGI(TAG, "Starting ALS task.");
+    vStartAlsTask(&xAlsTask, &xAlsOutputQueue, i2cSemaphore);
 
     ESP_LOGI(TAG, "Starting WiFi control task.");
     vStartWifiTask(&xWifiTask, &xWifiCommandQueue);

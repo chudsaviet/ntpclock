@@ -2,6 +2,9 @@
 
 #include <TimeZoneInfo.h>
 
-void tzBegin();
-
 int32_t utc2local(int32_t utc);
+
+void setTimezone(char *value);
+char *getTimezone();
+
+void vStartTzdataTask(TaskHandle_t *taskHandle);
