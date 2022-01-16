@@ -21,7 +21,21 @@
             const BLINK_LONG_DELAY_MS = 500;
             const NETWORKS_TABLE_MAX_ELEMENTS = 16;
 
-            $('table').tablesort()
+            $('table').tablesort();
+            $('.menu .item').tab();
+
+            $("#timezone_dropdown")
+                .dropdown({
+                    values: [
+                        {
+                            name: 'UNDEFINED',
+                            value: 'UNDEFINED',
+                            selected: true
+                        }
+                    ]
+                })
+                ;
+
 
             function blinkClass(element, _class) {
                 element.addClass(_class);
@@ -62,8 +76,8 @@
                     ;
             });
 
-            $("#save").click(function () {
-                var saveButton = $("#save");
+            $("#save_wifi").click(function () {
+                var saveButton = $("#save_wifi");
                 saveButton.addClass("disabled");
                 saveButton.addClass("loading");
                 $.when(
@@ -145,8 +159,24 @@
                     ;
             });
 
+            $("#save_time").click(function () {
+            });
+
+            $("#ntp_default_button").click(function () {
+                $("#ntp_input").val("pool.ntp.org");
+            });
+
             $.getJSON("api/wifi_sta_ssid", function (resp) {
                 $("#ssid").val(resp.ssid);
+            });
+
+            $.getJSON("timezones.json", function (resp) {
+                var values = [{ name: "GMT", value: "GMT", selected: true }];
+                resp.timezones.forEach(
+                    element => {
+                        values.push({ name: element, value: element });
+                    });
+                $("#timezone_dropdown").dropdown({ values: values });
             });
         });
     </script>
@@ -166,49 +196,86 @@
             </div>
         </div>
 
-        <div class="ui grid">
-            <div class="ui six wide column">
-                <div class="ui fluid labeled input">
-                    <div class="ui label">
-                        <i class="wifi icon"></i>SSID
+        <div class="ui top attached tabular menu">
+            <a class="active item" data-tab="wifi">WiFi</a>
+            <a class="item" data-tab="time">Time</a>
+        </div>
+        <div class="ui bottom attached active tab segment" data-tab="wifi">
+            <div class="ui grid">
+                <div class="ui six wide column">
+                    <div class="ui fluid labeled input">
+                        <div class="ui label">
+                            <i class="wifi icon"></i>SSID
+                        </div>
+                        <input type="text" id="ssid" placeholder="NULL">
                     </div>
-                    <input type="text" id="ssid" placeholder="NULL">
-                </div>
-                <div class="ui hidden divider"></div>
+                    <div class="ui hidden divider"></div>
 
-                <div class="ui fluid labeled input">
-                    <div class="ui label">
-                        <i class="lock icon"></i>Password
+                    <div class="ui fluid labeled input">
+                        <div class="ui label">
+                            <i class="lock icon"></i>Password
+                        </div>
+                        <input type="password" id="password">
                     </div>
-                    <input type="password" id="password">
-                </div>
-                <div class="ui hidden divider"></div>
+                    <div class="ui hidden divider"></div>
 
-                <button id="save" class="ui right floated button">Save</button>
-            </div>
-            <div class="ui ten wide column">
-                <button id="scan" class="ui fluid top attached button"><i class="sync icon"></i>Scan</button>
-                <table id="networks_table" class="ui attached sortable selectable celled table disabled">
-                    <thead>
-                        <tr>
-                            <th class="one wide">Use</th>
-                            <th class="eight wide">SSID</th>
-                            <th class="three wide">Signal</th>
-                            <th class="three wide">Security</th>
-                        </tr>
-                    </thead>
-                    <tbody id="networks_table_body">
-                        <tr>
-                            <td data-label="Use"></td>
-                            <td data-label="SSID"></td>
-                            <td data-label="Signal"></td>
-                            <td data-label="Security"></td>
-                        </tr>
-                    </tbody>
-                </table>
+                    <button id="save_wifi" class="ui right floated button">Save</button>
+                </div>
+                <div class="ui ten wide column">
+                    <button id="scan" class="ui fluid top attached button"><i class="sync icon"></i>Scan</button>
+                    <table id="networks_table" class="ui attached sortable selectable celled table disabled">
+                        <thead>
+                            <tr>
+                                <th class="one wide">Use</th>
+                                <th class="eight wide">SSID</th>
+                                <th class="three wide">Signal</th>
+                                <th class="three wide">Security</th>
+                            </tr>
+                        </thead>
+                        <tbody id="networks_table_body">
+                            <tr>
+                                <td data-label="Use"></td>
+                                <td data-label="SSID"></td>
+                                <td data-label="Signal"></td>
+                                <td data-label="Security"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
-    </div>
+        <div class="ui bottom attached tab segment" data-tab="time">
+            <div class="ui hidden divider"></div>
+            <div class="ui relaxed grid">
+                <div class="ui five wide column">
+                    <div class="ui fluid labeled input">
+                        <div class="ui label">
+                            NTP server
+                        </div>
+                        <input id="ntp_input" type="text" placeholder="pool.ntp.org">
+                    </div>
+                </div>
+                <div class="ui two wide column">
+                    <button id="ntp_default_button" class="ui right floated fluid button">Default</button>
+                </div>
+            </div>
+            <div class="ui hidden divider"></div>
+            <div class="ui grid">
+                <div class="ui sixteen wide column">
+                    <div class="ui large label">
+                        <i class="globe icon"></i>Timezone
+                    </div>
+                    <div class="ui hidden fitted divider"></div>
+                    <div id="timezone_dropdown" class="ui fluid search selection four column dropdown">
+                        <div class="text"></div>
+                        <i class="dropdown icon"></i>
+                    </div>
+                    <div class="ui hidden divider"></div>
+                    <button id="save_time" class="ui right floated button">Save</button>
+                </div>
+            </div>
+        </div>
+        <div class="ui hidden divider"></div>
 </body>
 
 </html>
