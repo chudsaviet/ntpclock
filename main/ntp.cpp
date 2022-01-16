@@ -6,6 +6,7 @@
 #include <esp_log.h>
 
 #include "rtc.h"
+#include "nvs_local.h"
 
 #include "secrets.h"
 
@@ -26,10 +27,45 @@
 #define NTP_SERVER_FINAL "pool.ntp.org"
 #endif
 
+#define NTP_SERVER_NVS_KEY "ntp_server"
+
 static int64_t lastNTPSyncTimerTime = 0;
 
 static SemaphoreHandle_t i2cSemaphore;
 static QueueHandle_t xOutputQueue = 0;
+
+const char *xGetNtpServer()
+{
+    return sntp_getservername(0);
+}
+
+void vSetNtpServer(char *address)
+{
+    nvs_handle_t nvs = nvs_open(NVS_READWRITE);
+    nvs_set_str(nvs, NTP_SERVER_NVS_KEY, address);
+    nvs_close(nvs);
+
+    sntp_setservername(0, address);
+}
+
+void vNtpServerAddressInit()
+{
+    char buffer[NTP_SERVER_MAX_LEN_CHARS + 1];
+    memset(buffer, 0, sizeof(buffer));
+    size_t read_bytes = sizeof(buffer) - 1;
+
+    nvs_handle_t nvs = nvs_open(NVS_READONLY);
+    if (nvs_get_str(nvs, NTP_SERVER_NVS_KEY, buffer, &read_bytes) != ESP_OK)
+    {
+        nvs_close(nvs);
+        sntp_setservername(0, NTP_SERVER_FINAL);
+    }
+    else
+    {
+        sntp_setservername(0, buffer);
+    }
+    nvs_close(nvs);
+}
 
 void sntpSyncCallback(timeval *tv)
 {
@@ -47,7 +83,7 @@ void vNtpTask(void *pvParameters)
 {
     sntp_set_sync_mode(SNTP_SYNC_MODE_IMMED);
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    sntp_setservername(0, NTP_SERVER_FINAL);
+    vNtpServerAddressInit();
     sntp_set_time_sync_notification_cb(sntpSyncCallback);
     sntp_init();
 

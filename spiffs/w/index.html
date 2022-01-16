@@ -160,6 +160,35 @@
             });
 
             $("#save_time").click(function () {
+                var saveButton = $("#save_time");
+                saveButton.addClass("disabled");
+                saveButton.addClass("loading");
+                $.when(
+                    $.ajax({
+                        method: "PUT",
+                        url: "api/timezone",
+                        data: JSON.stringify({
+                            "timezone": $("#timezone_dropdown").dropdown("get value")
+                        })
+                    }),
+                    $.ajax({
+                        method: "PUT",
+                        url: "api/ntp_server",
+                        data: JSON.stringify({
+                            "ntp_server": $("#ntp_input").val()
+                        })
+                    })
+                ).done(function (resp) {
+                    blinkClass(saveButton, "positive");
+                })
+                    .fail(function () {
+                        blinkClass(saveButton, "negative");
+                    })
+                    .always(function () {
+                        saveButton.removeClass("loading");
+                        saveButton.removeClass("disabled");
+                    })
+                    ;
             });
 
             $("#ntp_default_button").click(function () {
@@ -177,6 +206,14 @@
                         values.push({ name: element, value: element });
                     });
                 $("#timezone_dropdown").dropdown({ values: values });
+            });
+
+            $.getJSON("api/timezone", function (resp) {
+                $("#timezone_dropdown").dropdown("set value", resp.timezone);
+            });
+
+            $.getJSON("api/ntp_server", function (resp) {
+                $("#ntp_input").val(resp.ntp_server);
             });
         });
     </script>
@@ -219,7 +256,7 @@
                     </div>
                     <div class="ui hidden divider"></div>
 
-                    <button id="save_wifi" class="ui right floated button">Save</button>
+                    <button id="save_wifi" class="ui fluid large right floated button">Save</button>
                 </div>
                 <div class="ui ten wide column">
                     <button id="scan" class="ui fluid top attached button"><i class="sync icon"></i>Scan</button>
@@ -271,7 +308,7 @@
                         <i class="dropdown icon"></i>
                     </div>
                     <div class="ui hidden divider"></div>
-                    <button id="save_time" class="ui right floated button">Save</button>
+                    <button id="save_time" class="ui fluid large right floated button">Save</button>
                 </div>
             </div>
         </div>
