@@ -6,6 +6,8 @@
 #include <esp_log.h>
 
 #include "../wifi_control.h"
+#include "../tz_info_local.h"
+#include "../ntp.h"
 
 #define WIFI_SSID_MAX_SIZE_CHARS 32
 #define HTTP_PUT_MAX_CONTENT_SIZE_BYTES 4096
@@ -182,6 +184,112 @@ static esp_err_t restart_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+static esp_err_t get_timezone_handler(httpd_req_t *req)
+{
+    char *timezone = getTimezone();
+
+    ESP_LOGI(TAG, "get_timezone_handler(): returning <%s>.", timezone);
+
+    static char *format = "{\"timezone\": \"%s\"}";
+    char send_buffer[TIMEZONE_MAX_LEN_CHARS + sizeof(format) + 1] = {0};
+    sprintf((char *)&send_buffer, format, timezone);
+
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, (const char *)send_buffer, strlen((char *)&send_buffer));
+
+    return ESP_OK;
+}
+
+static esp_err_t put_timezone_handler(httpd_req_t *req)
+{
+    if (req->content_len > HTTP_PUT_MAX_CONTENT_SIZE_BYTES)
+    {
+        // ESP-IDF does not support HTTP error 413 Content too long.
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Content too long. Max length HTTP_PUT_MAX_CONTENT_SIZE_BYTES bytes.");
+        return ESP_OK;
+    }
+
+    char content[req->content_len + 1] = {0};
+
+    int ret = httpd_req_recv(req, content, req->content_len);
+    if (ret <= 0)
+    {
+        if (ret == HTTPD_SOCK_ERR_TIMEOUT)
+        {
+            httpd_resp_send_408(req);
+        }
+        return ESP_FAIL;
+    }
+    ESP_LOGD(TAG, "put_timezone_handler received:\n%s", content);
+
+    cJSON *json = cJSON_ParseWithLength((char *)&content, req->content_len);
+    cJSON *timezone = cJSON_GetObjectItemCaseSensitive(json, "timezone");
+
+    if (cJSON_IsString(timezone) && (timezone->valuestring != NULL))
+    {
+        setTimezone(timezone->valuestring);
+    }
+
+    cJSON_Delete(json);
+
+    // Send empty response to complete the request.
+    httpd_resp_send(req, NULL, 0);
+
+    return ESP_OK;
+}
+
+static esp_err_t get_ntp_server_handler(httpd_req_t *req)
+{
+    const char *ntp_server = xGetNtpServer();
+
+    static char *format = "{\"ntp_server\": \"%s\"}";
+    char send_buffer[NTP_SERVER_MAX_LEN_CHARS + sizeof(format) + 1] = {0};
+    sprintf((char *)&send_buffer, format, ntp_server);
+
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, (const char *)send_buffer, strlen((char *)&send_buffer));
+
+    return ESP_OK;
+}
+
+static esp_err_t put_ntp_server_handler(httpd_req_t *req)
+{
+    if (req->content_len > HTTP_PUT_MAX_CONTENT_SIZE_BYTES)
+    {
+        // ESP-IDF does not support HTTP error 413 Content too long.
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Content too long. Max length HTTP_PUT_MAX_CONTENT_SIZE_BYTES bytes.");
+        return ESP_OK;
+    }
+
+    char content[req->content_len + 1] = {0};
+
+    int ret = httpd_req_recv(req, content, req->content_len);
+    if (ret <= 0)
+    {
+        if (ret == HTTPD_SOCK_ERR_TIMEOUT)
+        {
+            httpd_resp_send_408(req);
+        }
+        return ESP_FAIL;
+    }
+    ESP_LOGD(TAG, "put_ntp_server_handler received:\n%s", content);
+
+    cJSON *json = cJSON_ParseWithLength((char *)&content, req->content_len);
+    cJSON *ntp_server = cJSON_GetObjectItemCaseSensitive(json, "ntp_server");
+
+    if (cJSON_IsString(ntp_server) && (ntp_server->valuestring != NULL))
+    {
+        vSetNtpServer(ntp_server->valuestring);
+    }
+
+    cJSON_Delete(json);
+
+    // Send empty response to complete the request.
+    httpd_resp_send(req, NULL, 0);
+
+    return ESP_OK;
+}
+
 void register_api_handlers(httpd_handle_t server)
 {
     httpd_uri_t handler_params = {0};
@@ -223,6 +331,38 @@ void register_api_handlers(httpd_handle_t server)
         .uri = "/api/wifi_scan",
         .method = HTTP_GET,
         .handler = get_wifi_scan_handler,
+        .user_ctx = NULL};
+    httpd_register_uri_handler(server, &handler_params);
+
+    ESP_LOGD(TAG, "Registering GET timezone handler.");
+    handler_params = {
+        .uri = "/api/timezone",
+        .method = HTTP_GET,
+        .handler = get_timezone_handler,
+        .user_ctx = NULL};
+    httpd_register_uri_handler(server, &handler_params);
+
+    ESP_LOGD(TAG, "Registering PUT timezone handler.");
+    handler_params = {
+        .uri = "/api/timezone",
+        .method = HTTP_PUT,
+        .handler = put_timezone_handler,
+        .user_ctx = NULL};
+    httpd_register_uri_handler(server, &handler_params);
+
+    ESP_LOGD(TAG, "Registering GET NTP server handler.");
+    handler_params = {
+        .uri = "/api/ntp_server",
+        .method = HTTP_GET,
+        .handler = get_ntp_server_handler,
+        .user_ctx = NULL};
+    httpd_register_uri_handler(server, &handler_params);
+
+    ESP_LOGD(TAG, "Registering PUT NTP server handler.");
+    handler_params = {
+        .uri = "/api/ntp_server",
+        .method = HTTP_PUT,
+        .handler = put_ntp_server_handler,
         .user_ctx = NULL};
     httpd_register_uri_handler(server, &handler_params);
 }

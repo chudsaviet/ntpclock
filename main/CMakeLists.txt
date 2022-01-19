@@ -11,6 +11,7 @@ idf_component_register(SRCS
     "wifi_control.cpp"
     "wpa_key_gen.cpp"
     "nvs_local.cpp"
+    "download.cpp"
     "http/server_control.cpp"
     "http/api_handlers.cpp"
     "http/file_server.cpp"

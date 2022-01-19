@@ -11,8 +11,6 @@
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_err.h"
-#include "nvs.h"
-#include "nvs_flash.h"
 
 #include "lwip/err.h"
 #include "lwip/sys.h"
@@ -70,83 +68,22 @@ static QueueHandle_t xCommandQueue = 0;
 static SemaphoreHandle_t xScanSemaphore = 0;
 
 void vWifiSaveStaSsid(char *ssid) {
-    ESP_LOGI(TAG, "Saving WiFi STA SSID to NVS.");
-
-    nvs_handle_t nvs_handle = nvs_open(NVS_READWRITE);
-
-    esp_err_t err = nvs_set_str(nvs_handle, WIFI_STA_SSID_NVS_KEY, ssid);
-    switch (err)
-    {
-    case ESP_OK:
-        ESP_LOGD(TAG, "WiFi STA SSID saved to NVS.");
-        break;
-    default:
-        ESP_LOGE(TAG, "Error saving WiFi STA SSID! (%s)", esp_err_to_name(err));
-        delayed_abort();
-    }
-
-    err = nvs_commit(nvs_handle);
-    switch (err)
-    {
-    case ESP_OK:
-        ESP_LOGI(TAG, "NVS commit successful.");
-        break;
-    default:
-        ESP_LOGE(TAG, "Error commiting NVS! (%s)", esp_err_to_name(err));
-        delayed_abort();
-    }
-
-    nvs_close(nvs_handle);
+    ESP_LOGI(TAG, "Saving WiFi STA SSID <%s> to NVS.", ssid);
+    l_nvs_set_str(WIFI_STA_SSID_NVS_KEY, ssid);
 }
 
 void vWifiSaveStaPass(char *pass) {
     ESP_LOGI(TAG, "Saving WiFi STA password to NVS.");
-    nvs_handle_t nvs_handle = nvs_open(NVS_READWRITE);
-
-    esp_err_t err = nvs_set_str(nvs_handle, WIFI_STA_PASS_NVS_KEY, pass);
-    switch (err)
-    {
-    case ESP_OK:
-        ESP_LOGD(TAG, "WiFi STA password saved to NVS.");
-        break;
-    default:
-        ESP_LOGE(TAG, "Error saving WiFi STA password! (%s)", esp_err_to_name(err));
-        delayed_abort();
-    }
-
-    err = nvs_commit(nvs_handle);
-    switch (err)
-    {
-    case ESP_OK:
-        ESP_LOGI(TAG, "NVS commit successful.");
-        break;
-    default:
-        ESP_LOGE(TAG, "Error commiting NVS! (%s)", esp_err_to_name(err));
-        delayed_abort();
-    }
-
-    nvs_close(nvs_handle);
+    l_nvs_set_str(WIFI_STA_PASS_NVS_KEY, pass);
 }
 
 void vPrepareStaSsidAndPass(wifi_config_t *wifi_config) {
-    nvs_handle_t nvs_handle = nvs_open(NVS_READONLY);
-    if (nvs_handle == 0)
-    {
-        ESP_LOGI(TAG, "Cannot opend NVS.");
-        abort();
-    }
-
-    size_t ssid_size = sizeof(wifi_config->sta.ssid);
-    esp_err_t ssid_read_result = nvs_get_str(nvs_handle, WIFI_STA_SSID_NVS_KEY, (char *)&wifi_config->sta.ssid, &ssid_size);
-    size_t pass_size = sizeof(wifi_config->sta.password);
-    esp_err_t pass_read_result = nvs_get_str(nvs_handle, WIFI_STA_PASS_NVS_KEY, (char *)&wifi_config->sta.password, &pass_size);
+    esp_err_t ssid_read_result = l_nvs_get_str(WIFI_STA_SSID_NVS_KEY, (char *)&wifi_config->sta.ssid, sizeof(wifi_config->sta.ssid));
+    esp_err_t pass_read_result = l_nvs_get_str(WIFI_STA_PASS_NVS_KEY, (char *)&wifi_config->sta.password, sizeof(wifi_config->sta.password));
 
     if (ssid_read_result != ESP_OK || pass_read_result != ESP_OK) {
         strcpy((char *)wifi_config->sta.ssid, WIFI_SSID);
         strcpy((char *)wifi_config->sta.password, WIFI_PASS);
-        
-        nvs_close(nvs_handle);
-
         ESP_LOGI(TAG, "WiFi STA SSID and/or password not found in NVS. Loading default values.");
 
         vWifiSaveStaSsid(WIFI_SSID);
@@ -302,9 +239,12 @@ void vSwitchToApMode()
     s_ap_netif = esp_netif_create_default_wifi_ap();
 
     wifi_config_t ap_config = xPrepareApConfig();
+    wifi_config_t sta_config = xPrepareStaConfig();
+    memset(&sta_config.sta.ssid, 0, sizeof(sta_config.sta.ssid));
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_APSTA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &ap_config));
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &sta_config));
     ESP_ERROR_CHECK(esp_wifi_start());
 
     ESP_LOGI(TAG, "Switching to WiFi AP mode finished. SSID: '%s', channel: %d.",
@@ -382,13 +322,14 @@ void vStartWifiTask(TaskHandle_t *taskHandle, QueueHandle_t *queueHandle)
 
 char *xGetWifiStaSsid()
 {
-    wifi_config_t wifi_config;
-    memset(&wifi_config, 0, sizeof(wifi_config));
-    ESP_ERROR_CHECK(esp_wifi_get_config(WIFI_IF_STA, &wifi_config));
+    char buffer[WIFI_SSID_MAX_LEN_CHARS+1];
+    memset(buffer, 0, sizeof(buffer));
 
-    size_t ssid_len = strlen((char *)&wifi_config.sta.ssid);
+    l_nvs_get_str(WIFI_STA_SSID_NVS_KEY, buffer, sizeof(buffer));
+    size_t ssid_len = strlen(buffer);
+    
     char *ssid = (char *)malloc(ssid_len + 1);
-    strcpy(ssid, (char *)&wifi_config.sta.ssid);
+    memcpy(ssid, buffer, ssid_len + 1);
 
     return ssid;
 }
