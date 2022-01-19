@@ -67,7 +67,23 @@ void vDisplayTime()
     {
         clockDisplay.clear();
         clockDisplay.setBrightness(currentBrightness);
-        clockDisplay.print(hour(currentTime.tv_sec) * 100 + minute(currentTime.tv_sec), DEC);
+
+        int currentHour = hour(currentTime.tv_sec);
+        int currentMinute = minute(currentTime.tv_sec);
+
+        uint8_t hourFirstDigit = currentHour / 10;
+        uint8_t hourSecondDigit = currentHour % 10;
+        uint8_t minuteFirstDigit = currentMinute / 10;
+        uint8_t minuteSecondDigit = currentMinute % 10;
+
+        if (hourFirstDigit > 0)
+        {
+            clockDisplay.writeDigitNum(0, hourFirstDigit);
+        }
+        clockDisplay.writeDigitNum(1, hourSecondDigit);
+        clockDisplay.writeDigitNum(3, minuteFirstDigit);
+        clockDisplay.writeDigitNum(4, minuteSecondDigit);
+        
         if (blinkColons)
         {
             clockDisplay.drawColon(second(currentTime.tv_sec) % 2 == 0);
