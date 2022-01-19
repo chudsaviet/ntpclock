@@ -41,11 +41,16 @@ const char *xGetNtpServer()
 
 void vSetNtpServer(char *address)
 {
-    nvs_handle_t nvs = nvs_open(NVS_READWRITE);
-    nvs_set_str(nvs, NTP_SERVER_NVS_KEY, address);
-    nvs_close(nvs);
+    ESP_LOGI(TAG, "Setting NTP server <%s>.", address);
 
-    sntp_setservername(0, address);
+    size_t address_len = strlen(address);
+    char *internal_address = (char *)malloc(address_len+1);
+    memset(internal_address, 0, address_len + 1);
+    memcpy(internal_address, address, address_len);
+
+    l_nvs_set_str(NTP_SERVER_NVS_KEY, internal_address);
+
+    sntp_setservername(0, internal_address);
 }
 
 void vNtpServerAddressInit()
@@ -54,17 +59,16 @@ void vNtpServerAddressInit()
     memset(buffer, 0, sizeof(buffer));
     size_t read_bytes = sizeof(buffer) - 1;
 
-    nvs_handle_t nvs = nvs_open(NVS_READONLY);
-    if (nvs_get_str(nvs, NTP_SERVER_NVS_KEY, buffer, &read_bytes) != ESP_OK)
+    if (l_nvs_get_str(NTP_SERVER_NVS_KEY, buffer, NTP_SERVER_MAX_LEN_CHARS + 1) != ESP_OK)
     {
-        nvs_close(nvs);
-        sntp_setservername(0, NTP_SERVER_FINAL);
+        ESP_LOGI(TAG, "Using hardcoded NTP server <%s>.", NTP_SERVER_FINAL);
+        vSetNtpServer(NTP_SERVER_FINAL);
     }
     else
     {
-        sntp_setservername(0, buffer);
+        ESP_LOGI(TAG, "Using NTP server <%s>.", buffer);
+        vSetNtpServer(buffer);
     }
-    nvs_close(nvs);
 }
 
 void sntpSyncCallback(timeval *tv)
@@ -111,7 +115,7 @@ void vStartNtpTask(TaskHandle_t *taskHandle, QueueHandle_t *outputQueue, Semapho
     xTaskCreatePinnedToCore(
         vNtpTask,
         "NTP watch",
-        configMINIMAL_STACK_SIZE * 2,
+        configMINIMAL_STACK_SIZE * 4,
         NULL,
         tskIDLE_PRIORITY,
         taskHandle,

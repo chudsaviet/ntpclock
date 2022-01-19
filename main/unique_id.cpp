@@ -64,74 +64,20 @@ void log_unique_id(uint8_t *unique_id)
 
 esp_err_t load_unique_id_from_nvs(uint8_t *output)
 {
-    nvs_handle_t nvs_handle = nvs_open(NVS_READONLY);
-    if (nvs_handle == 0)
-    {
-        ESP_LOGI(TAG, "Cannot opend NVS.");
-        return 1;
-    }
-
-    size_t read_bytes = UNIQUE_ID_SIZE_BYTES;
-
     ESP_LOGI(TAG, "Reading unique ID from NVS...");
-    esp_err_t err = nvs_get_blob(nvs_handle, UNIQUE_ID_NVS_KEY, (void *)&global_unique_id, &read_bytes);
-    switch (err)
-    {
-    case ESP_OK:
-        ESP_LOGI(TAG, "Unique ID read from NVS.");
-        if (read_bytes != UNIQUE_ID_SIZE_BYTES)
-        {
-            ESP_LOGE(TAG, "Wrong unique ID bytes count read - %d.", read_bytes);
-            return 1;
-        }
-        return 0;
-        break;
-    case ESP_ERR_NVS_NOT_FOUND:
-        ESP_LOGI(TAG, "Unique ID is not found in NVS.");
-        return 1;
-        break;
-    default:
-        ESP_LOGE(TAG, "Error NVS reading! (%s)", esp_err_to_name(err));
-        delayed_abort();
-    }
-
-    nvs_close(nvs_handle);
-    return 2;
+    return l_nvs_get_array(UNIQUE_ID_NVS_KEY, (void *)&global_unique_id, UNIQUE_ID_SIZE_BYTES);
 }
 
 void save_unique_id_to_nvs(uint8_t *unique_id)
 {
-    nvs_handle_t nvs_handle = nvs_open(NVS_READWRITE);
-
-    esp_err_t err = nvs_set_blob(nvs_handle, UNIQUE_ID_NVS_KEY, (void *)global_unique_id, UNIQUE_ID_SIZE_BYTES);
-    switch (err)
-    {
-    case ESP_OK:
-        ESP_LOGI(TAG, "Unique ID saved to NVS.");
-        break;
-    default:
-        ESP_LOGE(TAG, "Error saving unique ID! (%s)", esp_err_to_name(err));
-        delayed_abort();
-    }
-
-    err = nvs_commit(nvs_handle);
-    switch (err)
-    {
-    case ESP_OK:
-        ESP_LOGI(TAG, "NVS commit successful.");
-        break;
-    default:
-        ESP_LOGE(TAG, "Error commiting NVS! (%s)", esp_err_to_name(err));
-        delayed_abort();
-    }
-
-    nvs_close(nvs_handle);
+    ESP_LOGI(TAG, "Saving Unique ID to NVS.");
+    l_nvs_set_array(UNIQUE_ID_NVS_KEY, (void *)global_unique_id, UNIQUE_ID_SIZE_BYTES);
 }
 
 void init_unique_id()
 {
     esp_err_t ret = load_unique_id_from_nvs((uint8_t *)&global_unique_id);
-    if (ret != 0)
+    if (ret != ESP_OK)
     {
         ESP_LOGI(TAG, "No unique ID found in NVS, generating new one.");
         generate_unique_id((uint8_t *)&global_unique_id);

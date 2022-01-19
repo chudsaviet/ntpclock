@@ -278,7 +278,6 @@ static esp_err_t put_ntp_server_handler(httpd_req_t *req)
 
     if (cJSON_IsString(ntp_server) && (ntp_server->valuestring != NULL))
     {
-        ESP_LOGI(TAG, "Setting NTP server to '%s'.", ntp_server->valuestring);
         vSetNtpServer(ntp_server->valuestring);
     }
 

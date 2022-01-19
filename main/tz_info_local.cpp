@@ -6,7 +6,6 @@
 #include <esp_log.h>
 #include <freertos/task.h>
 #include <freertos/semphr.h>
-#include "nvs.h"
 
 #include "abort.h"
 #include "download.h"
@@ -25,13 +24,27 @@
 #define TZDATA_UPDATE_TIMEOUT_SEC 2505600 // 29 days
 #define TZ_LIST_URL "http://tzdata.dranik.xyz/timezones.json"
 #define TZ_LIST_VFS_PATH "/spiffs/w/timezones.json"
-#define TZ_LIST_UPDATE_DATE_NVS_KEY "tz_data_last_update"
+#define TZ_LIST_UPDATE_DATE_NVS_KEY "tz_list_last_update"
 #define TZ_LIST_UPDATE_TIMEOUT_SEC 15552000 // Approximately 6 months
 
 #define READ_CHUNK_BYTES 256
 #define SEMAPHORE_WAIT_MS 10000
 
-static byte *tzData = NULL;
+unsigned char PROGMEM GMT_data[118] = {
+	0x54, 0x5a, 0x69, 0x66, 0x32, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x04,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x47, 0x4d, 0x54, 0x00, 0x00,
+	0x00, 0x54, 0x5a, 0x69, 0x66, 0x32, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+	0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x47, 0x4d, 0x54, 0x00,
+	0x00, 0x00, 0x0a, 0x47, 0x4d, 0x54, 0x30, 0x0a
+};
+
+static byte *tzData = GMT_data;
 
 static TimeZoneInfo tzInfoLib;
 
@@ -43,17 +56,14 @@ static int64_t lastTzdataUpdateTime = 0;
 static int64_t lastTzListUpdateTime = 0;
 
 void setTimezone(char *value) {
+    // Keep timezone in heap and write it down to NVS.
+
     size_t value_len = strlen(value);
-    if (timezone != NULL) {
-        free(timezone);
-    }
     timezone = (char *)malloc(value_len+1);
     memset(timezone, 0, value_len+1);
     memcpy(timezone, value, value_len);
 
-    nvs_handle_t nvs = nvs_open(NVS_READWRITE);
-    nvs_set_blob(nvs, TIMEZONE_NVS_KEY, timezone, value_len+1);
-    nvs_commit(nvs);
+    l_nvs_set_str(TIMEZONE_NVS_KEY, timezone);
 }
 
 char *getTimezone() {
@@ -63,13 +73,12 @@ char *getTimezone() {
 void loadTimezoneFromNVS() {
     char read_buffer[TIMEZONE_LEN_MAX_CHARS+1] = {0};
     size_t read_bytes = 0;
-    nvs_handle_t nvs = nvs_open(NVS_READONLY);
-    if (nvs_get_blob(nvs, TIMEZONE_NVS_KEY, read_buffer, &read_bytes) != ESP_OK) {
+    
+    if (l_nvs_get_str(TIMEZONE_NVS_KEY, read_buffer, TIMEZONE_LEN_MAX_CHARS+1) != ESP_OK) {
         ESP_LOGE(TAG, "Timezone record not found in NVS. Setting default to <%s>.", DEFAULT_TIMEZONE);
-        nvs_close(nvs);
         setTimezone(DEFAULT_TIMEZONE);
     } else {
-        nvs_close(nvs);
+        setTimezone(read_buffer);
     }
 }
 
@@ -93,12 +102,10 @@ void loadTzFile()
 
     if (xSemaphoreTake(tzDataSemaphore, pdMS_TO_TICKS(SEMAPHORE_WAIT_MS)) != pdTRUE)
     {
-        ESP_LOGE(TAG, "Failed to take TX data semaphore.");
+        ESP_LOGE(TAG, "loadTzFile(): Failed to take TZ data semaphore.");
         delayed_abort();
     };
-    if (tzData != NULL) {
-        free(tzData);
-    }
+
     tzData = (byte *)malloc(file_stat.st_size);
     byte *chunk = tzData;
     size_t chunksize;
@@ -117,35 +124,36 @@ void tzBegin()
     ESP_LOGI(TAG, "Initializing TZ subsystem.");
 
     tzDataSemaphore = xSemaphoreCreateBinary();
+    tzInfoLib.setLocation_P(tzData);
     xSemaphoreGive(tzDataSemaphore);
 
     loadTzFile();
     tzInfoLib.setLocation_P(tzData);
+    
 }
 
 int32_t utc2local(int32_t utc)
 {
     if (xSemaphoreTake(tzDataSemaphore, pdMS_TO_TICKS(SEMAPHORE_WAIT_MS)) != pdTRUE)
     {
-        ESP_LOGE(TAG, "Failed to take TX data semaphore.");
+        ESP_LOGE(TAG, "utc2local: Failed to take TZ data semaphore.");
         delayed_abort();
     };
-    return tzInfoLib.utc2local(utc);
+    int32_t local =  tzInfoLib.utc2local(utc);
     xSemaphoreGive(tzDataSemaphore);
+    return local;
 }
 
 void lastTimestampsReadFromNVS()
 {
-    nvs_handle_t nvs = nvs_open(NVS_READONLY);
-    if (nvs_get_i64(nvs, TZ_DATA_UPDATE_DATE_NVS_KEY, &lastTzdataUpdateTime) != ESP_OK)
+    if (l_nvs_get_i64(TZ_DATA_UPDATE_DATE_NVS_KEY, &lastTzdataUpdateTime) != ESP_OK)
     {
         ESP_LOGE(TAG, "%s not found in NVS.", TZ_DATA_UPDATE_DATE_NVS_KEY);
     }
-    if (nvs_get_i64(nvs, TZ_LIST_UPDATE_DATE_NVS_KEY, &lastTzListUpdateTime) != ESP_OK)
+    if (l_nvs_get_i64(TZ_LIST_UPDATE_DATE_NVS_KEY, &lastTzListUpdateTime) != ESP_OK)
     {
         ESP_LOGE(TAG, "%s not found in NVS.", TZ_LIST_UPDATE_DATE_NVS_KEY);
     }
-    nvs_close(nvs);
 }
 
 void tzDataUpdate()
@@ -160,10 +168,8 @@ void tzDataUpdate()
         timeval currentTime;
         gettimeofday(&currentTime, NULL);
         lastTzdataUpdateTime = currentTime.tv_sec;
-        nvs_handle_t nvs = nvs_open(NVS_READWRITE);
-        nvs_set_i64(nvs, TZ_DATA_UPDATE_DATE_NVS_KEY, lastTzdataUpdateTime);
-        nvs_commit(nvs);
-        nvs_close(nvs);
+
+        l_nvs_set_i64(TZ_DATA_UPDATE_DATE_NVS_KEY, lastTzdataUpdateTime);
 
         loadTzFile();
     } else {
@@ -178,10 +184,7 @@ void tzListUpdate()
         timeval currentTime;
         gettimeofday(&currentTime, NULL);
         lastTzListUpdateTime = currentTime.tv_sec;
-        nvs_handle_t nvs = nvs_open(NVS_READWRITE);
-        nvs_set_i64(nvs, TZ_LIST_UPDATE_DATE_NVS_KEY, lastTzListUpdateTime);
-        nvs_commit(nvs);
-        nvs_close(nvs);
+        l_nvs_set_i64(TZ_LIST_UPDATE_DATE_NVS_KEY, lastTzListUpdateTime);
     } else {
         ESP_LOGE(TAG, "TZ list file download failed.");
     }
@@ -189,8 +192,6 @@ void tzListUpdate()
 
 void vTzdataTask(void *pvParameters)
 {
-    tzBegin();
-
     for (;;)
     {
         timeval currentTime;
@@ -217,11 +218,13 @@ void vStartTzdataTask(TaskHandle_t *taskHandle)
 {
     loadTimezoneFromNVS();
     lastTimestampsReadFromNVS();
+
+    tzBegin();
     
     xTaskCreatePinnedToCore(
         vTzdataTask,
-        "NTP watch",
-        configMINIMAL_STACK_SIZE * 2,
+        "Timezone control",
+        configMINIMAL_STACK_SIZE * 4,
         NULL,
         tskIDLE_PRIORITY,
         taskHandle,

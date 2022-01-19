@@ -3,7 +3,6 @@
 #include <Arduino.h>
 
 #include <esp_sntp.h>
-#include <nvs_flash.h>
 
 #include <button.h>
 
@@ -16,6 +15,7 @@
 #include "ntp.h"
 #include "rtc.h"
 #include "tz_info_local.h"
+#include "nvs_local.h"
 #include "http/server_control.h"
 
 #include "secrets.h"
@@ -51,33 +51,27 @@ static TaskHandle_t xTzdataControlTask = NULL;
 
 void setup()
 {
-    // Init unique ID.
+    ESP_LOGI(TAG, "Initializing NVS.");
+    nvs_begin();
+
+    ESP_LOGI(TAG, "Initializing unique ID.");
     init_unique_id();
 
-    // Init filesystem.
+    ESP_LOGI(TAG, "Initializing filesystem.");
     filesystem_init();
 
-    // Create I2C semaphore.
+    ESP_LOGI(TAG, "Creating I2C semaphore.");
     SemaphoreHandle_t i2cSemaphore = xSemaphoreCreateBinary();
     xSemaphoreGive(i2cSemaphore);
 
-    // Initialize Arduino environment.
+    ESP_LOGI(TAG, "Initializing Arduino framework.");
     initArduino();
 
-    // Start RTC task and do immediate sync.
+    ESP_LOGI(TAG, "Starting RTC control task.");
     vStartRtcTask(&xRtcTask, &xRtcCommandQueue, i2cSemaphore);
     RtcMessage rtcMessage = {};
     rtcMessage.command = RtcCommand::DO_SYSTEM_CLOCK_SYNC;
     xQueueSend(xRtcCommandQueue, &rtcMessage, (TickType_t)0);
-
-    ESP_LOGI(TAG, "Initializing NVS.");
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
-    {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(ret);
 
     ESP_LOGI(TAG, "Starting TZ data control task.");
     vStartTzdataTask(&xTzdataControlTask);
@@ -91,10 +85,10 @@ void setup()
     ESP_LOGI(TAG, "Starting WiFi control task.");
     vStartWifiTask(&xWifiTask, &xWifiCommandQueue);
 
-    // Start SNTP.
+    ESP_LOGI(TAG, "Starting SNTP control task.");
     vStartNtpTask(&xNtpTask, &xNtpOutputQueue, i2cSemaphore);
 
-    // Init button watcher task.
+    ESP_LOGI(TAG, "Starting button watcher task.");
     xButtonEventQueue = button_init(PIN_BIT(SET_BUTTON_GPIO));
 
     ESP_LOGI(TAG, "Starting WiFi control task.");
