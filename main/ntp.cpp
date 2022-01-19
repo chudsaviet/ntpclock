@@ -21,6 +21,8 @@
 
 #define NTP_TASK_CORE 1
 
+#define WAIT_FOR_SYNC_LOOP_DELAY_MS 1000
+
 #ifdef NTP_SERVER
 #define NTP_SERVER_FINAL NTP_SERVER
 #else
@@ -33,6 +35,14 @@ static int64_t lastNTPSyncTimerTime = 0;
 
 static SemaphoreHandle_t i2cSemaphore;
 static QueueHandle_t xOutputQueue = 0;
+
+static bool syncHappened = false;
+
+void vWaitForNtpSync() {
+    while (!syncHappened) {
+        vTaskDelay(pdMS_TO_TICKS(WAIT_FOR_SYNC_LOOP_DELAY_MS));
+    }
+}
 
 const char *xGetNtpServer()
 {
@@ -81,6 +91,8 @@ void sntpSyncCallback(timeval *tv)
     NtpMessage message = {};
     message.event = NtpEvent::SYNC_HAPPENED;
     xQueueSend(xOutputQueue, &message, pdMS_TO_TICKS(NTP_QUEUE_SEND_TIMEOUT_MS));
+
+    syncHappened = true;
 }
 
 void vNtpTask(void *pvParameters)

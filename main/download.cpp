@@ -67,7 +67,7 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
 
 esp_err_t http_download(char *url, char *vfs_path)
 {
-    ESP_LOGI(TAG, "Attempting to download fron <%s> to <%s>.", url, vfs_path);
+    ESP_LOGI(TAG, "Attempting to download from <%s> to <%s>.", url, vfs_path);
 
     download_user_data_t user_data;
     memset(&user_data, 0, sizeof(user_data));

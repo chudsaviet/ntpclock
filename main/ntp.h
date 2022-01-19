@@ -19,6 +19,7 @@ struct NtpMessage
 };
 
 const char *xGetNtpServer();
+void vWaitForNtpSync();
 void vSetNtpServer(char *address);
 
 void vStartNtpTask(TaskHandle_t *taskHandle, QueueHandle_t *outputQueue, SemaphoreHandle_t i2cSemaphore);

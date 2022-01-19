@@ -61,8 +61,8 @@ void l_nvs_set_str(const char* key, const char* value) {
         ESP_LOGE(TAG, "Cannot take NVS semaphore for writing key <%s>.", key);
         delayed_abort();
     }
-    nvs_set_str(nvs, key, value);
-    nvs_commit(nvs);
+    ESP_ERROR_CHECK(nvs_set_str(nvs, key, value));
+    ESP_ERROR_CHECK(nvs_commit(nvs));
     xSemaphoreGive(nvs_semaphore);
 }
 
@@ -73,9 +73,9 @@ void l_nvs_set_i64 (const char* key, int64_t value) {
         delayed_abort();
     }
 
-    nvs_set_i64(nvs, key, value);
+    ESP_ERROR_CHECK(nvs_set_i64(nvs, key, value));
 
-    nvs_commit(nvs);
+    ESP_ERROR_CHECK(nvs_commit(nvs));
     xSemaphoreGive(nvs_semaphore);
 }
 
@@ -86,9 +86,9 @@ void l_nvs_set_array(const char* key, const void* value, size_t length) {
         delayed_abort();
     }
     
-    nvs_set_blob(nvs, key, value, length);
+    ESP_ERROR_CHECK(nvs_set_blob(nvs, key, value, length));
 
-    nvs_commit(nvs);
+    ESP_ERROR_CHECK(nvs_commit(nvs));
     xSemaphoreGive(nvs_semaphore);
 }
 

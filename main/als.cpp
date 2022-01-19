@@ -5,7 +5,7 @@
 
 #define TAG "als.cpp"
 
-#define ALS_SEMAPHORE_TIMEOUT_MS 128
+#define ALS_SEMAPHORE_TIMEOUT_MS 1000
 
 #define ALS_OUTPUT_QUEUE_SIZE 4
 

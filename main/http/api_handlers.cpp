@@ -188,6 +188,8 @@ static esp_err_t get_timezone_handler(httpd_req_t *req)
 {
     char *timezone = getTimezone();
 
+    ESP_LOGI(TAG, "get_timezone_handler(): returning <%s>.", timezone);
+
     static char *format = "{\"timezone\": \"%s\"}";
     char send_buffer[TIMEZONE_MAX_LEN_CHARS + sizeof(format) + 1] = {0};
     sprintf((char *)&send_buffer, format, timezone);
@@ -225,7 +227,6 @@ static esp_err_t put_timezone_handler(httpd_req_t *req)
 
     if (cJSON_IsString(timezone) && (timezone->valuestring != NULL))
     {
-        ESP_LOGI(TAG, "Setting timezone to '%s'.", timezone->valuestring);
         setTimezone(timezone->valuestring);
     }
 
