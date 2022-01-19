@@ -206,11 +206,11 @@
                         values.push({ name: element, value: element });
                     });
                 $("#timezone_dropdown").dropdown({ values: values });
-            }).then(
+                
                 $.getJSON("api/timezone", function (resp) {
                     $("#timezone_dropdown").dropdown("set selected", resp.timezone);
                 })
-            );
+            });
 
             $.getJSON("api/ntp_server", function (resp) {
                 $("#ntp_input").val(resp.ntp_server);
