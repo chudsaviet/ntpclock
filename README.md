@@ -5,6 +5,8 @@ Features
 1. NTP sunchronization using WiFi.
 2. RTC backup - will show time from a high precision RTC if WiFi is not available.
 3. Automatic display brightness control.
+4. Automatic timezone data update from online TZDATA database.
+5. Settings via WiFi AP mode and a web page.
 
 Pictures
 --------
@@ -26,3 +28,4 @@ Software
 --------
 1. ESP-IDF (built on FreeRTOS).
 2. Arduino as ESP-IDF component.
+3. Formantic UI.
