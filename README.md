@@ -33,10 +33,10 @@ Bill of materials
 
 Building and running the device
 -------------------------------
-1. Manufacture I2C/Power hub using files from `cad/i2c_header_x5`.
+1. Manufacture I2C/Power hub using files from `cad/i2c_header_x5`. Don't forget 3.2K pull-up resistors.
 2. 3D print enclosure using files from `cad/enclosure`.
 3. Apply tint film to the display module.
-4. *Assemble the device.*
+4. *Assemble the device.* Select appropriate screw diameter and length for each hole. Connect hub 5V to VIN in ESP32, ground to ground 3.3V to 3.3V, SDA/SCL to ESP32. Connect every component to the hub.
 5. Install ESP-IDF *v4.4* - https://github.com/espressif/esp-idf/tree/release/v4.4 .
 6. Clone repository and *init submodules recursively*.
 7. Copy `main/secrets.h` from `main/secrets.h.example` and set your own setting inside.
