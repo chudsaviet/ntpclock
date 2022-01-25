@@ -29,7 +29,7 @@ Bill of materials
 | 3D printed plastic enclosure    | $8    |
 | Tint film (ex. for cars)        | $1    |
 | ------------------------------- | ----- |
-| Total                           | $69   |
+| Total                           | $70   |
 
 Building and running the device
 -------------------------------
