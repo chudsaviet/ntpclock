@@ -45,5 +45,6 @@ Changing settings after flashing firmware
 2. Device will create a WiFi AP with SSID looking like `ntpclock-XXXXXXXX`.
 3. The password will be shown scrolling on display.
 4. Connect to AP and open http://192.168.4.1 .
+
 ![UI wifi tab](/readme_assets/ui_wifi.png)
 ![UI time tab](/readme_assets/ui_time.png)
