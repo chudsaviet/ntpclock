@@ -27,6 +27,7 @@ Bill of materials
 | Jumper wires, Female-Female     | $2    |
 | M3, M2.5 and M2 bolts           | $5    |
 | 3D printed plastic enclosure    | $8    |
+| Tint film (ex. for cars)        | $1    |
 | ------------------------------- | ----- |
 | Total                           | $69   |
 
@@ -34,10 +35,12 @@ Building and running the device
 -------------------------------
 1. Manufacture I2C/Power hub using files from `cad/i2c_header_x5`.
 2. 3D print enclosure using files from `cad/enclosure`.
-3. Install ESP-IDF *v4.4* - https://github.com/espressif/esp-idf/tree/release/v4.4 .
-4. Clone repository and *init submodules recursively*.
-5. Copy `main/secrets.h` from `main/secrets.h.example` and set your own setting inside.
-5. Using instructions from EPS-IDF, build and flash the firmware.
+3. Apply tint film to the display module.
+4. *Assemble the device.*
+5. Install ESP-IDF *v4.4* - https://github.com/espressif/esp-idf/tree/release/v4.4 .
+6. Clone repository and *init submodules recursively*.
+7. Copy `main/secrets.h` from `main/secrets.h.example` and set your own setting inside.
+8. Using instructions from EPS-IDF, build and flash the firmware.
 
 Changing settings after flashing firmware
 -----------------------------------------
