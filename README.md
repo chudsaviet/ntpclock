@@ -9,6 +9,7 @@ Features
 Pictures
 --------
 ![Front view](/readme_assets/assembly_front.jpg)
+![Back view](/readme_assets/assembly_back.jpg)
 ![Inside view](/readme_assets/assembly_guts.jpg)
 
 Components
