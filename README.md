@@ -2,10 +2,10 @@ NTP synchronized desktop 7-segment clock
 =======================================================
 Features
 --------
-1. *NTP* sunchronization using WiFi.
-2. *RTC* backup - will show time from a high precision RTC if WiFi is not available.
-3. Automatic display *brightness* control.
-4. Automatic *timezone* data update from online TZDATA database.
+1. **NTP** sunchronization using WiFi.
+2. **RTC** backup - will show time from a high precision RTC if WiFi is not available.
+3. Automatic display **brightness** control.
+4. Automatic **timezone** data update from online TZDATA database.
 5. Settings via WiFi AP mode and a web page.
 
 Pictures
@@ -36,9 +36,9 @@ Building and running the device
 1. Manufacture I2C/Power hub using files from `cad/i2c_header_x5`. Don't forget 3.2K pull-up resistors.
 2. 3D print enclosure using files from `cad/enclosure`.
 3. Apply tint film to the display module.
-4. *Assemble the device.* Select appropriate screw diameter and length for each hole. Connect hub 5V to VIN in ESP32, ground to ground, 3.3V to 3.3V, SDA/SCL to appropriate ESP32 pins. Connect every component to the hub.
-5. Install ESP-IDF *v4.4* - https://github.com/espressif/esp-idf/tree/release/v4.4 .
-6. Clone repository and *init submodules recursively*.
+4. **Assemble the device.** Select appropriate screw diameter and length for each hole. Connect hub 5V to VIN in ESP32, ground to ground, 3.3V to 3.3V, SDA/SCL to appropriate ESP32 pins. Connect every component to the hub.
+5. Install ESP-IDF **v4.4** - https://github.com/espressif/esp-idf/tree/release/v4.4 .
+6. Clone repository and **init submodules recursively**.
 7. Copy `main/secrets.h` from `main/secrets.h.example` and set your own setting inside.
 8. Using instructions from EPS-IDF, build and flash the firmware.
 
